@@ -15,7 +15,8 @@
                 <Label style="-fx-font-size: 18; -fx-text-fill: #ecf0f1; -fx-padding: 10;" text="Menu" />
 
                 <Button prefWidth="287.0" style="-fx-background-color: #34495e; -fx-text-fill: #ecf0f1; -fx-font-size: 14; -fx-pref-height: 40;" text="Users" />
-                <Button prefWidth="298.0" style="-fx-background-color: #34495e; -fx-text-fill: #ecf0f1; -fx-font-size: 14; -fx-pref-height: 40;" text="Forum" />
+                <Button fx:id="forumButton" prefWidth="298.0" style="-fx-background-color: #34495e; -fx-text-fill: #ecf0f1; -fx-font-size: 14; -fx-pref-height: 40;" text="Forum" />
+                <Button fx:id="userForumButton" prefWidth="298.0" style="-fx-background-color: #34495e; -fx-text-fill: #ecf0f1; -fx-font-size: 14; -fx-pref-height: 40;" text="User Forum" />
                 <Button prefWidth="308.0" style="-fx-background-color: #34495e; -fx-text-fill: #ecf0f1; -fx-font-size: 14; -fx-pref-height: 40;" text="Competition" />
                 <Button prefWidth="305.0" style="-fx-background-color: #34495e; -fx-text-fill: #ecf0f1; -fx-font-size: 14; -fx-pref-height: 40;" text="Projet" />
                 <Button prefWidth="376.0" style="-fx-background-color: #34495e; -fx-text-fill: #ecf0f1; -fx-font-size: 14; -fx-pref-height: 40;" text="Webinar" />

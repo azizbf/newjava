@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.geometry.Insets?>
+
+<AnchorPane prefHeight="600.0" prefWidth="800.0" xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1" fx:controller="org.example.controller.forum.UserForumController">
+    <children>
+        <VBox spacing="10.0" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
+            <padding>
+                <Insets bottom="10.0" left="10.0" right="10.0" top="10.0"/>
+            </padding>
+            <children>
+                <HBox alignment="CENTER_LEFT" spacing="20.0">
+                    <Label text="Forum" style="-fx-font-size: 24px; -fx-font-weight: bold;"/>
+                    <Button text="New Post" onAction="#handleNewPost" style="-fx-background-color: #55aa55;"/>
+                </HBox>
+                
+                <SplitPane dividerPositions="0.3" VBox.vgrow="ALWAYS">
+                    <items>
+                        <!-- Left Panel - Posts List -->
+                        <VBox spacing="10.0">
+                            <Label text="All Posts" style="-fx-font-weight: bold;"/>
+                            <ListView fx:id="forumListView" VBox.vgrow="ALWAYS"/>
+                        </VBox>
+                        
+                        <!-- Right Panel - Post Details and Interactions -->
+                        <ScrollPane fitToWidth="true">
+                            <content>
+                                <VBox spacing="15.0">
+                                    <!-- Post Creation Form -->
+                                    <VBox spacing="5.0" style="-fx-border-color: #cccccc; -fx-border-radius: 5; -fx-padding: 10;">
+                                        <Label text="Create New Post" style="-fx-font-weight: bold;"/>
+                                        <TextField fx:id="titleTextField" promptText="Title"/>
+                                        <Label fx:id="titleCountLabel" text="0/100" style="-fx-font-size: 10px; -fx-text-fill: #888888;"/>
+                                        <TextArea fx:id="postTextField" promptText="Content" prefHeight="100.0"/>
+                                        <Label fx:id="contentCountLabel" text="0/5000" style="-fx-font-size: 10px; -fx-text-fill: #888888;"/>
+                                        <TextField fx:id="tagTextField" promptText="Tags (comma separated)"/>
+                                        <Label text="Tags should contain only letters, numbers, hyphens and underscores" style="-fx-font-size: 10px; -fx-text-fill: #888888;"/>
+                                        <Button fx:id="postButton" text="Create Post" onAction="#handlePost" style="-fx-background-color: #5599ff;"/>
+                                    </VBox>
+                                    
+                                    <!-- Post Details Section -->
+                                    <VBox fx:id="postDetailsBox" spacing="10.0" visible="false" style="-fx-border-color: #cccccc; -fx-border-radius: 5; -fx-padding: 10;">
+                                        <Label text="Post Details" style="-fx-font-weight: bold;"/>
+                                        
+                                        <!-- Post Content -->
+                                        <Label fx:id="postTitleLabel" style="-fx-font-weight: bold; -fx-font-size: 16px;"/>
+                                        <Label fx:id="postContentLabel" wrapText="true"/>
+                                        <Label fx:id="postTagsLabel" style="-fx-font-style: italic;"/>
+                                        
+                                        <!-- Reactions Section -->
+                                        <HBox spacing="10.0" alignment="CENTER_LEFT">
+                                            <Button text="Like" onAction="#handleLike" style="-fx-background-color: #55aa55;"/>
+                                            <Button text="Dislike" onAction="#handleDislike" style="-fx-background-color: #ffaa55;"/>
+                                            <Label fx:id="likesLabel" text="Likes: 0"/>
+                                            <Label fx:id="dislikesLabel" text="Dislikes: 0"/>
+                                        </HBox>
+                                        
+                                        <!-- Comments Section -->
+                                        <Label text="Comments" style="-fx-font-weight: bold;"/>
+                                        <ListView fx:id="commentsListView" prefHeight="150.0"/>
+                                        <HBox spacing="10.0">
+                                            <TextArea fx:id="commentTextArea" promptText="Add a comment" prefHeight="50.0" HBox.hgrow="ALWAYS"/>
+                                            <VBox alignment="BOTTOM_RIGHT" spacing="5.0">
+                                                <Label fx:id="commentCountLabel" text="0/1000" style="-fx-font-size: 10px; -fx-text-fill: #888888;"/>
+                                                <Button text="Comment" onAction="#handleComment" style="-fx-background-color: #5599ff;"/>
+                                            </VBox>
+                                        </HBox>
+                                    </VBox>
+                                </VBox>
+                            </content>
+                        </ScrollPane>
+                    </items>
+                </SplitPane>
+            </children>
+        </VBox>
+    </children>
+</AnchorPane> 
