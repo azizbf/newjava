@@ -43,7 +43,9 @@ public class ForumController {
     private TagService tagService;
     private PostReactionService reactionService;
     private Post selectedPost;
+    private Comment selectedComment;
     private int currentUserId = 1; // Temporary hardcoded user ID
+    private boolean editingComment = false;
 
     @FXML
     private void initialize() {
@@ -224,6 +226,12 @@ public class ForumController {
             return;
         }
 
+        // If we're in edit mode, redirect to handleUpdateComment
+        if (editingComment) {
+            handleUpdateComment();
+            return;
+        }
+
         try {
             Comment comment = new Comment();
             comment.setPostId(selectedPost.getId());
@@ -317,8 +325,8 @@ public class ForumController {
                     List<Comment> comments = commentService.readByPostId(selectedPost.getId());
                     
                     if (index >= 0 && index < comments.size()) {
-                        Comment comment = comments.get(index);
-                        commentService.delete(comment.getId());
+                        selectedComment = comments.get(index);
+                        commentService.delete(selectedComment.getId());
                         loadComments(selectedPost.getId());
                     }
                 } catch (SQLException e) {
@@ -327,6 +335,64 @@ public class ForumController {
                 }
             }
         });
+    }
+
+    @FXML
+    private void handleEditComment() {
+        String selected = commentsListView.getSelectionModel().getSelectedItem();
+        if (selected == null) {
+            showError("No comment selected");
+            return;
+        }
+        
+        try {
+            int index = commentsListView.getSelectionModel().getSelectedIndex();
+            List<Comment> comments = commentService.readByPostId(selectedPost.getId());
+            
+            if (index >= 0 && index < comments.size()) {
+                selectedComment = comments.get(index);
+                // Populate the text area with the comment content
+                commentTextArea.setText(selectedComment.getContent());
+                // Change the button text or provide some indication that we're editing
+                editingComment = true;
+                // Provide visual feedback
+                showInfo("Editing comment. Press 'Update Comment' when done.");
+            }
+        } catch (SQLException e) {
+            showError("Error editing comment: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    @FXML
+    private void handleUpdateComment() {
+        if (selectedComment == null) {
+            showError("No comment selected for editing");
+            return;
+        }
+
+        String content = commentTextArea.getText();
+        if (content.isEmpty()) {
+            showError("Comment cannot be empty");
+            return;
+        }
+
+        try {
+            selectedComment.setContent(content);
+            commentService.update(selectedComment);
+            
+            // Reset state
+            commentTextArea.clear();
+            selectedComment = null;
+            editingComment = false;
+            
+            // Refresh comments
+            loadComments(selectedPost.getId());
+            showInfo("Comment updated successfully");
+        } catch (SQLException e) {
+            showError("Error updating comment: " + e.getMessage());
+            e.printStackTrace();
+        }
     }
 
     @FXML

@@ -47,6 +47,8 @@
                     <HBox spacing="10.0">
                         <TextArea fx:id="commentTextArea" promptText="Add a comment" prefHeight="50.0" prefWidth="430.0"/>
                         <Button text="Add Comment" onAction="#handleComment"/>
+                        <Button text="Edit Comment" onAction="#handleEditComment" style="-fx-background-color: #ffaa55;"/>
+                        <Button text="Update Comment" onAction="#handleUpdateComment" style="-fx-background-color: #55aa55;"/>
                         <Button text="Delete Comment" onAction="#handleDeleteComment" style="-fx-background-color: #ff5555;"/>
                     </HBox>
                 </VBox>
