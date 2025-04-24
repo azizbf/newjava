@@ -47,7 +47,7 @@ public class FrontMenu {
         buttonPathMap.put(coursesButton, "/Courses/courses.fxml");
         buttonPathMap.put(webinarsButton, "/Webinars/webinars.fxml");
         buttonPathMap.put(competitionsButton, "/Competitions/competitions.fxml");
-        buttonPathMap.put(profileButton, "/User/profile.fxml");
+        buttonPathMap.put(profileButton, "/user/userfront.fxml");
         
         // Set up button actions
         homeButton.setOnAction(event -> handleHomeButton());

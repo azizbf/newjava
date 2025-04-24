@@ -39,7 +39,7 @@
                 </HBox>
                 
                 <!-- User Profile Button -->
-                <Button fx:id="profileButton" styleClass="profile-button" text="Profile">
+                <Button fx:id="profileButton" styleClass="profile-button" text="Account">
                     <graphic>
                         <Label text="👤" />
                     </graphic>

@@ -55,20 +55,14 @@
                         <Font name="Segoe UI" size="14.0" />
                     </font>
                 </Button>
-                
-                <Label text="Hint: Use 'admin@esprit.tn' for admin view">
-                    <font>
-                        <Font size="11.0" />
-                    </font>
-                    <textFill>#888888</textFill>
-                </Label>
-                
-                <Label text="Or any other email for user view">
-                    <font>
-                        <Font size="11.0" />
-                    </font>
-                    <textFill>#888888</textFill>
-                </Label>
+
+                <Button text="Sign Up"
+                fx:id="signUpButton"
+                layoutX="320.0"
+                layoutY="240.0"
+                prefWidth="100.0"
+                style="-fx-background-color: #0078D7; -fx-text-fill: white;" />
+
             </children>
         </VBox>
     </children>
