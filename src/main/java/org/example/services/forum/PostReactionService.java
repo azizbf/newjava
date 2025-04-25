@@ -125,4 +125,19 @@ public class PostReactionService {
         }
         return 0;
     }
+
+    /**
+     * Delete all reactions for a specific post
+     * @param postId The ID of the post
+     * @throws SQLException if a database error occurs
+     */
+    public void deleteAllForPost(int postId) throws SQLException {
+        String query = "DELETE FROM post_reaction WHERE post_id = ?";
+        try (Connection conn = dataSource.getInstance().getConnection();
+             PreparedStatement stmt = conn.prepareStatement(query)) {
+            stmt.setInt(1, postId);
+            int count = stmt.executeUpdate();
+            System.out.println("Deleted " + count + " reactions for post " + postId);
+        }
+    }
 } 

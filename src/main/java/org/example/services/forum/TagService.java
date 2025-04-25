@@ -165,4 +165,25 @@ public class TagService {
             if (conn != null) dataSource.getInstance().releaseConnection(conn);
         }
     }
+    
+    /**
+     * Remove all tag associations for a post
+     * @param postId The ID of the post
+     * @throws SQLException if a database error occurs
+     */
+    public void removeAllTagsFromPost(int postId) throws SQLException {
+        String query = "DELETE FROM post_tag WHERE post_id = ?";
+        Connection conn = null;
+        PreparedStatement stmt = null;
+        try {
+            conn = dataSource.getInstance().getConnection();
+            stmt = conn.prepareStatement(query);
+            stmt.setInt(1, postId);
+            int count = stmt.executeUpdate();
+            System.out.println("Removed " + count + " tag associations for post " + postId);
+        } finally {
+            if (stmt != null) try { stmt.close(); } catch (SQLException e) { /* ignore */ }
+            if (conn != null) dataSource.getInstance().releaseConnection(conn);
+        }
+    }
 } 

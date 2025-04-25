@@ -4,11 +4,16 @@ import javafx.animation.FadeTransition;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
+import javafx.scene.Scene;
 import javafx.scene.control.Button;
+import javafx.scene.control.Alert;
+import javafx.scene.control.ButtonType;
 import javafx.scene.layout.AnchorPane;
+import javafx.stage.Stage;
 import javafx.util.Duration;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 
 public class FrontMenu {
     @FXML
@@ -31,6 +36,9 @@ public class FrontMenu {
     
     @FXML
     private Button profileButton;
+    
+    @FXML
+    private Button signOutButton;
     
     @FXML
     private AnchorPane contentPane;
@@ -165,6 +173,54 @@ public class FrontMenu {
         fadeIn.setFromValue(0);
         fadeIn.setToValue(1);
         fadeIn.play();
+    }
+    
+    /**
+     * Handle sign out button click
+     */
+    @FXML
+    private void handleSignOut() {
+        // Create a confirmation dialog
+        Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
+        alert.setTitle("Sign Out");
+        alert.setHeaderText("Sign Out Confirmation");
+        alert.setContentText("Are you sure you want to sign out?");
+        
+        // Customize button text
+        ButtonType buttonTypeYes = new ButtonType("Yes");
+        ButtonType buttonTypeNo = new ButtonType("No");
+        
+        alert.getButtonTypes().setAll(buttonTypeYes, buttonTypeNo);
+        
+        // Show the dialog and wait for response
+        Optional<ButtonType> result = alert.showAndWait();
+        
+        if (result.isPresent() && result.get() == buttonTypeYes) {
+            try {
+                // Get the current stage
+                Stage currentStage = (Stage) signOutButton.getScene().getWindow();
+                
+                // Load the login screen
+                FXMLLoader loader = new FXMLLoader(getClass().getResource("/login.fxml"));
+                Parent root = loader.load();
+                Scene scene = new Scene(root);
+                
+                // Setup and display the login screen
+                currentStage.setScene(scene);
+                currentStage.setTitle("Esprit Login");
+                currentStage.centerOnScreen();
+                
+                // For debugging
+                System.out.println("User signed out: " + currentUserId);
+                
+                // Optional: reset any user session data or perform cleanup
+                // ...
+                
+            } catch (Exception e) {
+                System.err.println("Error during sign out: " + e.getMessage());
+                e.printStackTrace();
+            }
+        }
     }
     
     /**

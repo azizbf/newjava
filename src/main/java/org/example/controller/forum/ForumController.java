@@ -1,8 +1,12 @@
 package org.example.controller.forum;
 
+import javafx.animation.FadeTransition;
+import javafx.animation.ScaleTransition;
+import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
 import javafx.scene.layout.VBox;
+import javafx.util.Duration;
 import org.example.models.forum.Post;
 import org.example.models.forum.Comment;
 import org.example.models.forum.Tag;
@@ -10,6 +14,9 @@ import org.example.services.forum.PostService;
 import org.example.services.forum.CommentService;
 import org.example.services.forum.TagService;
 import org.example.services.forum.PostReactionService;
+import org.example.services.UserService;
+import org.example.utils.InputValidator;
+import org.example.utils.InputValidator.ValidationResult;
 
 import java.sql.SQLException;
 import java.time.format.DateTimeFormatter;
@@ -36,6 +43,10 @@ public class ForumController {
     private Label dislikesLabel;
     @FXML
     private Button postButton;
+    @FXML
+    private Label postAuthorLabel;
+    @FXML
+    private Label postDateLabel;
 
     private boolean editMode = false;
     private PostService postService;
@@ -46,6 +57,7 @@ public class ForumController {
     private Comment selectedComment;
     private int currentUserId = 1; // Temporary hardcoded user ID
     private boolean editingComment = false;
+    private UserService userService;
 
     @FXML
     private void initialize() {
@@ -55,6 +67,10 @@ public class ForumController {
             commentService = new CommentService();
             tagService = new TagService();
             reactionService = new PostReactionService();
+            userService = new UserService();
+            
+            // Try to get a valid user
+            initializeValidUser();
             
             loadPosts();
             
@@ -68,23 +84,33 @@ public class ForumController {
                             if (selectedPost != null) {
                                 showPostDetails(selectedPost);
                             } else {
-                                showError("Post not found");
+                                Platform.runLater(() -> showError("Post not found"));
                             }
                         }
                     } catch (NumberFormatException e) {
-                        showError("Invalid post ID format: " + e.getMessage());
+                        Platform.runLater(() -> showError("Invalid post ID format: " + e.getMessage()));
                     } catch (SQLException e) {
-                        showError("Database error: " + e.getMessage());
+                        Platform.runLater(() -> showError("Database error: " + e.getMessage()));
                         e.printStackTrace(); // Log full stack trace
                     } catch (Exception e) {
-                        showError("Unexpected error: " + e.getMessage());
+                        Platform.runLater(() -> showError("Unexpected error: " + e.getMessage()));
                         e.printStackTrace(); // Log full stack trace
                     }
                 }
             });
         } catch (Exception e) {
-            showError("Error initializing forum: " + e.getMessage());
+            Platform.runLater(() -> showError("Error initializing forum: " + e.getMessage()));
             e.printStackTrace(); // Log full stack trace
+        }
+    }
+
+    private void initializeValidUser() {
+        try {
+            // Try to find a valid user or create one if none exists
+            currentUserId = userService.getOrCreateValidUserId();
+        } catch (SQLException e) {
+            Platform.runLater(() -> showError("Error initializing user: " + e.getMessage()));
+            e.printStackTrace();
         }
     }
 
@@ -93,21 +119,60 @@ public class ForumController {
             forumListView.getItems().clear();
             List<Post> posts = postService.readAll();
             for (Post post : posts) {
-                forumListView.getItems().add(post.getId() + " - " + post.getTitle());
+                try {
+                    String userInfo = userService.getUsernameById(post.getOwnerId());
+                    forumListView.getItems().add(post.getId() + " - " + post.getTitle() + " (par " + userInfo + ")");
+                } catch (SQLException e) {
+                    // En cas d'erreur, afficher sans l'information d'utilisateur
+                    forumListView.getItems().add(post.getId() + " - " + post.getTitle());
+                    System.out.println("Error getting user info for post " + post.getId() + ": " + e.getMessage());
+                }
             }
         } catch (SQLException e) {
             showError("Error loading posts: " + e.getMessage());
+            e.printStackTrace();
         }
     }
 
     private void showPostDetails(Post post) {
+        // Hide initially for animation
+        postDetailsBox.setOpacity(0);
+        postDetailsBox.setScaleX(0.97);
+        postDetailsBox.setScaleY(0.97);
         postDetailsBox.setVisible(true);
         
         // Switch to edit mode
         editMode = true;
         titleTextField.setText(post.getTitle());
         postTextField.setText(post.getContent());
-        postButton.setText("Update Post");
+        
+        // Ajouter le nom d'utilisateur et la date aux informations de post
+        try {
+            String userInfo = userService.getUsernameById(post.getOwnerId());
+            postButton.setText("Update Post");
+            
+            // Mettre à jour les labels d'auteur et de date
+            if (postAuthorLabel != null) {
+                postAuthorLabel.setText(userInfo);
+            }
+            if (postDateLabel != null) {
+                postDateLabel.setText("Date: " + post.getCreatedAt().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")));
+            }
+        } catch (SQLException e) {
+            postButton.setText("Update Post");
+            
+            // Gérer l'erreur pour les labels
+            if (postAuthorLabel != null) {
+                postAuthorLabel.setText("User ID: " + post.getOwnerId());
+            }
+            if (postDateLabel != null) {
+                postDateLabel.setText("Date: " + (post.getCreatedAt() != null ? 
+                    post.getCreatedAt().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")) : 
+                    "Non disponible"));
+            }
+            
+            System.out.println("Error getting username: " + e.getMessage());
+        }
         
         try {
             // Load tags
@@ -127,6 +192,21 @@ public class ForumController {
             
             // Load reactions
             updateReactionCounts(post.getId());
+            
+            // Animate post details display
+            FadeTransition fadeIn = new FadeTransition(Duration.millis(300), postDetailsBox);
+            fadeIn.setFromValue(0);
+            fadeIn.setToValue(1);
+            
+            ScaleTransition scaleIn = new ScaleTransition(Duration.millis(300), postDetailsBox);
+            scaleIn.setFromX(0.97);
+            scaleIn.setFromY(0.97);
+            scaleIn.setToX(1);
+            scaleIn.setToY(1);
+            
+            fadeIn.play();
+            scaleIn.play();
+            
         } catch (SQLException e) {
             showError("Error loading post details: " + e.getMessage());
             e.printStackTrace(); // Log full stack trace
@@ -137,12 +217,37 @@ public class ForumController {
         try {
             commentsListView.getItems().clear();
             List<Comment> comments = commentService.readByPostId(postId);
-            for (Comment comment : comments) {
-                commentsListView.getItems().add(comment.getContent() + " - " + 
-                    comment.getCreatedAt().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")));
+            
+            if (comments.isEmpty()) {
+                commentsListView.getItems().add("Aucun commentaire pour le moment");
+            } else {
+                for (Comment comment : comments) {
+                    // Récupérer le nom d'utilisateur
+                    String userInfo;
+                    try {
+                        userInfo = userService.getUsernameById(comment.getOwnerId());
+                    } catch (SQLException e) {
+                        userInfo = "User ID: " + comment.getOwnerId();
+                        System.out.println("Error getting user info for comment " + comment.getId() + ": " + e.getMessage());
+                    }
+                    
+                    String formattedComment = String.format("%d - [%s] %s - %s", 
+                        comment.getId(),
+                        userInfo,
+                        comment.getContent(),
+                        comment.getCreatedAt().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")));
+                    commentsListView.getItems().add(formattedComment);
+                }
             }
+            
+            // Assurez-vous que la ListView est visible
+            commentsListView.setVisible(true);
+            
+            // Log pour le débogage
+            System.out.println("Chargement de " + comments.size() + " commentaires");
         } catch (SQLException e) {
             showError("Error loading comments: " + e.getMessage());
+            e.printStackTrace();
         }
     }
 
@@ -159,13 +264,29 @@ public class ForumController {
 
     @FXML
     private void handlePost() {
-        String title = titleTextField.getText();
-        String content = postTextField.getText();
-        String tags = tagTextField.getText();
+        String title = titleTextField.getText().trim();
+        String content = postTextField.getText().trim();
+        String tags = tagTextField.getText().trim();
 
-        if (title.isEmpty() || content.isEmpty()) {
-            showError("Title and content are required");
+        // Form validation
+        ValidationResult titleResult = InputValidator.validateTitle(title);
+        if (!titleResult.isValid()) {
+            Platform.runLater(() -> showError(titleResult.getErrorMessage()));
             return;
+        }
+        
+        ValidationResult contentResult = InputValidator.validatePostContent(content);
+        if (!contentResult.isValid()) {
+            Platform.runLater(() -> showError(contentResult.getErrorMessage()));
+            return;
+        }
+        
+        if (!tags.isEmpty()) {
+            ValidationResult tagsResult = InputValidator.validateTags(tags);
+            if (!tagsResult.isValid()) {
+                Platform.runLater(() -> showError(tagsResult.getErrorMessage()));
+                return;
+            }
         }
 
         try {
@@ -180,14 +301,36 @@ public class ForumController {
                 // Reset UI
                 loadPosts();
                 clearFields();
-                showInfo("Post updated successfully");
+                Platform.runLater(() -> showInfo("Post updated successfully"));
             } else {
                 // Create new post
                 Post post = new Post();
                 post.setOwnerId(currentUserId);
                 post.setTitle(title);
                 post.setContent(content);
-                postService.create(post);
+                
+                try {
+                    postService.create(post);
+                } catch (SQLException e) {
+                    // Check if it's a foreign key constraint error
+                    if (e.getMessage().contains("foreign key constraint") && e.getMessage().contains("owner_id")) {
+                        try {
+                            // Try to reset the valid user and retry
+                            Platform.runLater(() -> showWarning("User reference error. Attempting reset..."));
+                            currentUserId = userService.getOrCreateValidUserId();
+                            
+                            // Retry creating the post with the new user ID
+                            post.setOwnerId(currentUserId);
+                            postService.create(post);
+                        } catch (SQLException retryEx) {
+                            Platform.runLater(() -> showError("Reset failed. Error: " + retryEx.getMessage()));
+                            retryEx.printStackTrace();
+                            return;
+                        }
+                    } else {
+                        throw e; // Re-throw exception if it's not a foreign key constraint error
+                    }
+                }
 
                 // Add tags
                 if (!tags.isEmpty()) {
@@ -203,26 +346,63 @@ public class ForumController {
                     }
                 }
 
-                loadPosts();
-                clearFields();
-                showInfo("Post created successfully");
+                // Animation effect for the button
+                Button postButton = this.postButton;
+                String originalStyle = postButton.getStyle();
+                
+                postButton.setStyle("-fx-background-color: #4CAF50; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 24; -fx-padding: 12 25; -fx-cursor: hand;");
+                
+                // Create scale animation
+                ScaleTransition scaleUp = new ScaleTransition(Duration.millis(100), postButton);
+                scaleUp.setFromX(1.0);
+                scaleUp.setFromY(1.0);
+                scaleUp.setToX(1.1);
+                scaleUp.setToY(1.1);
+                
+                ScaleTransition scaleDown = new ScaleTransition(Duration.millis(100), postButton);
+                scaleDown.setFromX(1.1);
+                scaleDown.setFromY(1.1);
+                scaleDown.setToX(1.0);
+                scaleDown.setToY(1.0);
+                
+                scaleUp.setOnFinished(e -> {
+                    scaleDown.play();
+                });
+                
+                scaleDown.setOnFinished(e -> {
+                    // Reset button style after animation
+                    postButton.setStyle(originalStyle);
+                    
+                    // Reset form and interface
+                    loadPosts();
+                    clearFields();
+                    
+                    // Show success message
+                    Platform.runLater(() -> showInfo("Post created successfully"));
+                });
+                
+                scaleUp.play();
             }
         } catch (SQLException e) {
             String action = editMode ? "updating" : "creating";
-            showError("Error " + action + " post: " + e.getMessage());
+            Platform.runLater(() -> showError("Error " + action + " post: " + e.getMessage()));
+            e.printStackTrace();
         }
     }
 
     @FXML
     private void handleComment() {
         if (selectedPost == null) {
-            showError("Please select a post first");
+            Platform.runLater(() -> showError("Please select a post first"));
             return;
         }
 
-        String content = commentTextArea.getText();
-        if (content.isEmpty()) {
-            showError("Comment cannot be empty");
+        String content = commentTextArea.getText().trim();
+        
+        // Form validation for comment
+        ValidationResult commentResult = InputValidator.validateCommentContent(content);
+        if (!commentResult.isValid()) {
+            Platform.runLater(() -> showError(commentResult.getErrorMessage()));
             return;
         }
 
@@ -237,12 +417,91 @@ public class ForumController {
             comment.setPostId(selectedPost.getId());
             comment.setOwnerId(currentUserId);
             comment.setContent(content);
-            commentService.create(comment);
             
-            loadComments(selectedPost.getId());
+            try {
+                commentService.create(comment);
+                System.out.println("Commentaire créé avec ID: " + comment.getId());
+            } catch (SQLException e) {
+                // Check if it's a foreign key constraint error
+                if (e.getMessage().contains("foreign key constraint") && (e.getMessage().contains("owner_id") || e.getMessage().contains("user"))) {
+                    try {
+                        // Try to reset the valid user and retry
+                        Platform.runLater(() -> showWarning("User reference error. Attempting reset..."));
+                        currentUserId = userService.getOrCreateValidUserId();
+                        
+                        // Retry creating the comment with the new user ID
+                        comment.setOwnerId(currentUserId);
+                        commentService.create(comment);
+                        System.out.println("Commentaire créé après correction avec ID: " + comment.getId());
+                    } catch (SQLException retryEx) {
+                        Platform.runLater(() -> showError("Reset failed. Error: " + retryEx.getMessage()));
+                        retryEx.printStackTrace();
+                        return;
+                    }
+                } else {
+                    throw e; // Re-throw exception if it's not a foreign key constraint error
+                }
+            }
+            
+            // Clear comment text area
             commentTextArea.clear();
+            
+            // Refresh comments list with animation
+            try {
+                loadCommentsWithAnimation(selectedPost.getId());
+                Platform.runLater(() -> showInfo("Comment added successfully"));
+            } catch (SQLException e) {
+                // Fallback to regular load if animation fails
+                loadComments(selectedPost.getId());
+                Platform.runLater(() -> showInfo("Comment added successfully (with fallback refresh)"));
+            }
         } catch (SQLException e) {
-            showError("Error adding comment: " + e.getMessage());
+            Platform.runLater(() -> showError("Error adding comment: " + e.getMessage()));
+            e.printStackTrace();
+        }
+    }
+    
+    private void loadCommentsWithAnimation(int postId) throws SQLException {
+        List<Comment> comments = commentService.readByPostId(postId);
+        
+        commentsListView.getItems().clear();
+        
+        if (comments.isEmpty()) {
+            commentsListView.getItems().add("Aucun commentaire pour le moment");
+        } else {
+            for (Comment comment : comments) {
+                // Récupérer le nom d'utilisateur
+                String userInfo;
+                try {
+                    userInfo = userService.getUsernameById(comment.getOwnerId());
+                } catch (SQLException e) {
+                    userInfo = "User ID: " + comment.getOwnerId();
+                    System.out.println("Error getting user info for comment " + comment.getId() + ": " + e.getMessage());
+                }
+                
+                String formattedComment = String.format("%d - [%s] %s - %s", 
+                    comment.getId(),
+                    userInfo,
+                    comment.getContent(),
+                    comment.getCreatedAt().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")));
+                commentsListView.getItems().add(formattedComment);
+            }
+        }
+        
+        System.out.println("Chargement avec animation de " + comments.size() + " commentaires");
+        
+        // Assurez-vous que la ListView est visible
+        commentsListView.setVisible(true);
+        
+        // Apply fade transition to comment list
+        FadeTransition fade = new FadeTransition(Duration.millis(300), commentsListView);
+        fade.setFromValue(0.5);
+        fade.setToValue(1.0);
+        fade.play();
+        
+        // Scroll to last comment if there are any
+        if (!comments.isEmpty()) {
+            commentsListView.scrollTo(comments.size() - 1);
         }
     }
 
@@ -253,7 +512,19 @@ public class ForumController {
             reactionService.toggleReaction(selectedPost.getId(), currentUserId, true);
             updateReactionCounts(selectedPost.getId());
         } catch (SQLException e) {
-            showError("Error updating reaction: " + e.getMessage());
+            // Check if it's a foreign key constraint error
+            if (e.getMessage().contains("foreign key constraint") && e.getMessage().contains("user_id")) {
+                try {
+                    // Try to reset the valid user and retry
+                    currentUserId = userService.getOrCreateValidUserId();
+                    reactionService.toggleReaction(selectedPost.getId(), currentUserId, true);
+                    updateReactionCounts(selectedPost.getId());
+                } catch (SQLException retryEx) {
+                    Platform.runLater(() -> showError("Error updating reaction: " + retryEx.getMessage()));
+                }
+            } else {
+                Platform.runLater(() -> showError("Error updating reaction: " + e.getMessage()));
+            }
         }
     }
 
@@ -264,14 +535,26 @@ public class ForumController {
             reactionService.toggleReaction(selectedPost.getId(), currentUserId, false);
             updateReactionCounts(selectedPost.getId());
         } catch (SQLException e) {
-            showError("Error updating reaction: " + e.getMessage());
+            // Check if it's a foreign key constraint error
+            if (e.getMessage().contains("foreign key constraint") && e.getMessage().contains("user_id")) {
+                try {
+                    // Try to reset the valid user and retry
+                    currentUserId = userService.getOrCreateValidUserId();
+                    reactionService.toggleReaction(selectedPost.getId(), currentUserId, false);
+                    updateReactionCounts(selectedPost.getId());
+                } catch (SQLException retryEx) {
+                    Platform.runLater(() -> showError("Error updating reaction: " + retryEx.getMessage()));
+                }
+            } else {
+                Platform.runLater(() -> showError("Error updating reaction: " + e.getMessage()));
+            }
         }
     }
 
     @FXML
     private void handleDeletePost() {
         if (selectedPost == null) {
-            showError("No post selected");
+            Platform.runLater(() -> showError("No post selected"));
             return;
         }
         
@@ -284,20 +567,44 @@ public class ForumController {
         alert.showAndWait().ifPresent(response -> {
             if (response == ButtonType.OK) {
                 try {
-                    // Delete all comments first (foreign key constraint)
-                    List<Comment> comments = commentService.readByPostId(selectedPost.getId());
-                    for (Comment comment : comments) {
-                        commentService.delete(comment.getId());
+                    int postId = selectedPost.getId();
+                    System.out.println("Deleting post ID: " + postId);
+                    
+                    // 1. Delete all reactions for this post
+                    try {
+                        reactionService.deleteAllForPost(postId);
+                    } catch (SQLException e) {
+                        System.out.println("Error deleting reactions: " + e.getMessage());
                     }
                     
-                    // Delete post
-                    postService.delete(selectedPost.getId());
+                    // 2. Delete all tag associations for this post
+                    try {
+                        tagService.removeAllTagsFromPost(postId);
+                    } catch (SQLException e) {
+                        System.out.println("Error removing tag associations: " + e.getMessage());
+                    }
+                    
+                    // 3. Delete all comments
+                    List<Comment> comments = commentService.readByPostId(postId);
+                    for (Comment comment : comments) {
+                        try {
+                            commentService.delete(comment.getId());
+                        } catch (SQLException e) {
+                            System.out.println("Error deleting comment " + comment.getId() + ": " + e.getMessage());
+                        }
+                    }
+                    
+                    // 4. Finally delete the post
+                    postService.delete(postId);
+                    
+                    // Update UI
                     loadPosts();
                     clearFields();
                     postDetailsBox.setVisible(false);
                     selectedPost = null;
+                    showInfo("Post deleted successfully");
                 } catch (SQLException e) {
-                    showError("Error deleting post: " + e.getMessage());
+                    Platform.runLater(() -> showError("Error deleting post: " + e.getMessage()));
                     e.printStackTrace();
                 }
             }
@@ -307,7 +614,7 @@ public class ForumController {
     @FXML
     private void handleDeleteComment() {
         String selected = commentsListView.getSelectionModel().getSelectedItem();
-        if (selected == null) {
+        if (selected == null || selected.equals("Aucun commentaire pour le moment")) {
             showError("No comment selected");
             return;
         }
@@ -328,6 +635,7 @@ public class ForumController {
                         selectedComment = comments.get(index);
                         commentService.delete(selectedComment.getId());
                         loadComments(selectedPost.getId());
+                        showInfo("Comment deleted successfully");
                     }
                 } catch (SQLException e) {
                     showError("Error deleting comment: " + e.getMessage());
@@ -340,7 +648,7 @@ public class ForumController {
     @FXML
     private void handleEditComment() {
         String selected = commentsListView.getSelectionModel().getSelectedItem();
-        if (selected == null) {
+        if (selected == null || selected.equals("Aucun commentaire pour le moment")) {
             showError("No comment selected");
             return;
         }
@@ -355,8 +663,16 @@ public class ForumController {
                 commentTextArea.setText(selectedComment.getContent());
                 // Change the button text or provide some indication that we're editing
                 editingComment = true;
-                // Provide visual feedback
-                showInfo("Editing comment. Press 'Update Comment' when done.");
+                
+                // Show username of comment author
+                String userInfo;
+                try {
+                    userInfo = userService.getUsernameById(selectedComment.getOwnerId());
+                } catch (SQLException e) {
+                    userInfo = "User ID: " + selectedComment.getOwnerId();
+                    System.out.println("Error getting user info: " + e.getMessage());
+                }
+                showInfo("Editing comment by " + userInfo + ". Press 'Update Comment' when done.");
             }
         } catch (SQLException e) {
             showError("Error editing comment: " + e.getMessage());
@@ -378,6 +694,15 @@ public class ForumController {
         }
 
         try {
+            // Get username for feedback message
+            String userInfo;
+            try {
+                userInfo = userService.getUsernameById(selectedComment.getOwnerId());
+            } catch (SQLException e) {
+                userInfo = "User ID: " + selectedComment.getOwnerId();
+                System.out.println("Error getting user info: " + e.getMessage());
+            }
+            
             selectedComment.setContent(content);
             commentService.update(selectedComment);
             
@@ -388,7 +713,7 @@ public class ForumController {
             
             // Refresh comments
             loadComments(selectedPost.getId());
-            showInfo("Comment updated successfully");
+            showInfo("Comment by " + userInfo + " updated successfully");
         } catch (SQLException e) {
             showError("Error updating comment: " + e.getMessage());
             e.printStackTrace();
@@ -431,6 +756,14 @@ public class ForumController {
     private void showInfo(String message) {
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
         alert.setTitle("Information");
+        alert.setHeaderText(null);
+        alert.setContentText(message);
+        alert.showAndWait();
+    }
+    
+    private void showWarning(String message) {
+        Alert alert = new Alert(Alert.AlertType.WARNING);
+        alert.setTitle("Warning");
         alert.setHeaderText(null);
         alert.setContentText(message);
         alert.showAndWait();
