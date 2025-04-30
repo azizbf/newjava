@@ -19,6 +19,7 @@ import java.io.IOException;
 import java.net.URL;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -69,6 +70,9 @@ public class UserFrontController implements Initializable {
 
     @FXML
     private Button deactivateAccountButton;
+
+    @FXML
+    private Label cinLabel;
 
     // Date formatter for display
     private final DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("MMMM d, yyyy");
@@ -132,31 +136,51 @@ public class UserFrontController implements Initializable {
      * Load user data into the UI components
      */
     private void loadUserData() {
-        // Set user information
-        nameLabel.setText(currentUser.getName());
-
-        // Format role for display (remove ROLE_ prefix and capitalize)
-        String role = currentUser.getRoles().replace("ROLE_", "");
-        role = role.substring(0, 1) + role.substring(1).toLowerCase();
-        roleLabel.setText(role);
-
-        // Set member since date (we're using current date for demo as it's not stored in User)
-        memberSinceLabel.setText("Member since: " + LocalDate.now().format(dateFormatter));
-
-        // Set email and phone
-        emailLabel.setText(currentUser.getEmail());
-        phoneLabel.setText(currentUser.getNumTel().isEmpty() ? "Not provided" : currentUser.getNumTel());
-
-        // Set registration date (using current date for demo)
-        registrationDateLabel.setText(LocalDate.now().format(dateFormatter));
-
-        // Set last login (using current time for demo)
-        lastLoginLabel.setText("Today at " + LocalDateTime.now().format(timeFormatter));
-
-        // Set login count
-        loginCountLabel.setText(String.valueOf(currentUser.getLoginCount()));
-
-        // Note: All image-related code has been removed
+        try {
+            Connection conn = dataSource.getInstance().getConnection();
+            String query = "SELECT id, name, email, numTel, cin FROM user WHERE id = ?";
+            PreparedStatement stmt = conn.prepareStatement(query);
+            stmt.setInt(1, currentUser.getId());
+            
+            ResultSet rs = stmt.executeQuery();
+            if (rs.next()) {
+                currentUser.setName(rs.getString("name"));
+                currentUser.setEmail(rs.getString("email"));
+                currentUser.setNumTel(rs.getString("numTel"));
+                currentUser.setCin(rs.getString("cin"));
+                
+                // Update UI elements
+                nameLabel.setText(currentUser.getName());
+                
+                // Format role for display (remove ROLE_ prefix and capitalize)
+                String role = currentUser.getRoles().replace("ROLE_", "");
+                role = role.substring(0, 1) + role.substring(1).toLowerCase();
+                roleLabel.setText(role);
+                
+                // Set member since date
+                memberSinceLabel.setText("Member since: " + LocalDate.now().format(dateFormatter));
+                
+                emailLabel.setText(currentUser.getEmail());
+                phoneLabel.setText(currentUser.getNumTel().isEmpty() ? "Not provided" : currentUser.getNumTel());
+                cinLabel.setText(currentUser.getCin() != null ? currentUser.getCin() : "Not provided");
+                
+                // Set registration date
+                registrationDateLabel.setText(LocalDate.now().format(dateFormatter));
+                
+                // Set last login
+                lastLoginLabel.setText("Today at " + LocalDateTime.now().format(timeFormatter));
+                
+                // Set login count
+                loginCountLabel.setText(String.valueOf(currentUser.getLoginCount()));
+            }
+            
+            rs.close();
+            stmt.close();
+            conn.close();
+        } catch (SQLException e) {
+            e.printStackTrace();
+            showError("Error loading user data: " + e.getMessage());
+        }
     }
 
     /**
@@ -227,6 +251,8 @@ public class UserFrontController implements Initializable {
         emailField.setPromptText("Email");
         TextField phoneField = new TextField(currentUser.getNumTel());
         phoneField.setPromptText("Phone Number");
+        TextField cinField = new TextField(currentUser.getCin());
+        cinField.setPromptText("CIN");
 
         grid.add(new Label("Name:"), 0, 0);
         grid.add(nameField, 1, 0);
@@ -234,6 +260,8 @@ public class UserFrontController implements Initializable {
         grid.add(emailField, 1, 1);
         grid.add(new Label("Phone:"), 0, 2);
         grid.add(phoneField, 1, 2);
+        grid.add(new Label("CIN:"), 0, 3);
+        grid.add(cinField, 1, 3);
 
         dialog.getDialogPane().setContent(grid);
 
@@ -254,6 +282,7 @@ public class UserFrontController implements Initializable {
             currentUser.setName(nameField.getText());
             currentUser.setEmail(emailField.getText());
             currentUser.setNumTel(phoneField.getText());
+            currentUser.setCin(cinField.getText());
 
             try {
                 // Save the updated user to the database
@@ -276,14 +305,15 @@ public class UserFrontController implements Initializable {
             Connection conn = dataSource.getInstance().getConnection();
             
             // Prepare the update statement with correct column names
-            String query = "UPDATE user SET name = ?, email = ?, numTel = ? WHERE id = ?";
+            String query = "UPDATE user SET name = ?, email = ?, numTel = ?, cin = ? WHERE id = ?";
             PreparedStatement stmt = conn.prepareStatement(query);
             
             // Set parameters
             stmt.setString(1, user.getName());
             stmt.setString(2, user.getEmail());
             stmt.setString(3, user.getNumTel());
-            stmt.setInt(4, user.getId());
+            stmt.setString(4, user.getCin());
+            stmt.setInt(5, user.getId());
             
             // Execute update
             int rowsAffected = stmt.executeUpdate();

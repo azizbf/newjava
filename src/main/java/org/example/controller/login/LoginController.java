@@ -12,7 +12,9 @@ import javafx.stage.Modality;
 import javafx.stage.Stage;
 import javafx.stage.StageStyle;
 
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
 
 /**
  * Controller for the login screen
@@ -32,6 +34,9 @@ public class LoginController {
 
     @FXML
     private Button signUpButton;
+
+    @FXML
+    private Button scanCINButton;
 
     /**
      * Handle login button click event
@@ -58,6 +63,40 @@ public class LoginController {
 
         if (!success) {
             showError("Invalid email or password");
+        }
+    }
+
+    /**
+     * Handle CIN scanner login
+     */
+    @FXML
+    private void handleScanCINLogin() {
+        try {
+            ProcessBuilder processBuilder = new ProcessBuilder(
+                "python",
+                "\"C:\\Users\\Lenovo\\Desktop\\newjava\\src\\main\\resources\\IntelligentScanner\\cinScanner.py\""
+            );
+            processBuilder.redirectErrorStream(true);
+            Process process = processBuilder.start();
+
+            BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
+            String cinNumber = reader.readLine();
+            process.waitFor();
+
+            if (cinNumber != null && !cinNumber.trim().isEmpty()) {
+                // Use the LoginHandler to process the CIN login
+                Stage stage = (Stage) scanCINButton.getScene().getWindow();
+                boolean success = LoginHandler.handleCINLogin(cinNumber.trim(), stage);
+
+                if (!success) {
+                    showError("No account found with this CIN");
+                }
+            } else {
+                showError("Could not scan CIN. Please try again or use email login.");
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            showError("Error scanning CIN: " + e.getMessage());
         }
     }
 
@@ -95,23 +134,23 @@ public class LoginController {
             }
         });
 
-        // Add event handler for the sign up button
+        // Add event handler for the signup button
         signUpButton.setOnAction(event -> openSignUpForm());
     }
 
     /**
-     * Open the sign up form when the sign up button is clicked
+     * Open the signup form when the signup button is clicked
      */
     private void openSignUpForm() {
         try {
-            // Load the sign up FXML
+            // Load the signup FXML
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/user/SignUp.fxml"));
             Parent signUpRoot = loader.load();
 
             // Get the controller
             org.example.controller.user.SignUpController signUpController = loader.getController();
 
-            // Create a new stage for the sign up form
+            // Create a new stage for the signup form
             Stage signUpStage = new Stage();
             signUpStage.initModality(Modality.APPLICATION_MODAL);
             signUpStage.initStyle(StageStyle.DECORATED);
@@ -121,7 +160,7 @@ public class LoginController {
             // Set the close button action
             signUpController.setStage(signUpStage);
 
-            // Show the sign up form and wait for it to close
+            // Show the signup form and wait for it to close
             signUpStage.showAndWait();
 
             // If the user was created successfully, pre-fill the login form
@@ -135,6 +174,38 @@ public class LoginController {
         } catch (IOException e) {
             e.printStackTrace();
             showError("Could not open sign up form");
+        }
+    }
+
+    /**
+     * Handle forgot password link click
+     */
+    @FXML
+    private void handleForgotPassword() {
+        try {
+            // Load the password reset FXML
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/user/PasswordReset.fxml"));
+            Parent resetRoot = loader.load();
+
+            // Get the controller
+            PasswordResetController resetController = loader.getController();
+
+            // Create a new stage for the password reset form
+            Stage resetStage = new Stage();
+            resetStage.initModality(Modality.APPLICATION_MODAL);
+            resetStage.initStyle(StageStyle.DECORATED);
+            resetStage.setTitle("Reset Password");
+            resetStage.setScene(new Scene(resetRoot));
+
+            // Set the stage in the controller
+            resetController.setStage(resetStage);
+
+            // Show the password reset form
+            resetStage.showAndWait();
+
+        } catch (IOException e) {
+            e.printStackTrace();
+            showError("Could not open password reset form");
         }
     }
 }

@@ -11,11 +11,12 @@ public class User {
     private int loginCount;
     private String imageUrl;
     private String numTel;
+    private String cin;
     private LocalDateTime penalizedUntil;
 
     // Constructor
-    public User(int id,String email, String password, String roles, String name,
-                int loginCount, String imageUrl, String numTel, LocalDateTime penalizedUntil) {
+    public User(int id, String email, String password, String roles, String name,
+                int loginCount, String imageUrl, String numTel, String cin, LocalDateTime penalizedUntil) {
         this.id = id;
         this.email = email;
         this.password = password;
@@ -24,6 +25,7 @@ public class User {
         this.loginCount = loginCount;
         this.imageUrl = imageUrl;
         this.numTel = numTel;
+        this.cin = cin;
         this.penalizedUntil = penalizedUntil;
     }
 
@@ -52,6 +54,9 @@ public class User {
     public String getNumTel() { return numTel; }
     public void setNumTel(String numTel) { this.numTel = numTel; }
 
+    public String getCin() { return cin; }
+    public void setCin(String cin) { this.cin = cin; }
+
     public LocalDateTime getPenalizedUntil() { return penalizedUntil; }
     public void setPenalizedUntil(LocalDateTime penalizedUntil) { this.penalizedUntil = penalizedUntil; }
 
@@ -66,6 +71,7 @@ public class User {
                 ", loginCount=" + loginCount +
                 ", imageUrl='" + imageUrl + '\'' +
                 ", numTel='" + numTel + '\'' +
+                ", cin='" + cin + '\'' +
                 ", penalizedUntil=" + penalizedUntil +
                 '}';
     }

@@ -108,13 +108,26 @@
                             </font>
                         </Label>
 
-                        <!-- Registration Date -->
-                        <Label text="Registration Date" textFill="#78909c" GridPane.rowIndex="2" GridPane.columnIndex="0">
+                        <!-- CIN -->
+                        <Label text="CIN" textFill="#78909c" GridPane.rowIndex="2" GridPane.columnIndex="0">
                             <font>
                                 <Font size="14.0"/>
                             </font>
                         </Label>
-                        <Label fx:id="registrationDateLabel" text="April 25, 2025" GridPane.rowIndex="2" GridPane.columnIndex="1"
+                        <Label fx:id="cinLabel" text="Not provided" GridPane.rowIndex="2" GridPane.columnIndex="1"
+                               style="-fx-text-fill: #2d3748; -fx-font-weight: bold;">
+                            <font>
+                                <Font size="14.0"/>
+                            </font>
+                        </Label>
+
+                        <!-- Registration Date -->
+                        <Label text="Registration Date" textFill="#78909c" GridPane.rowIndex="3" GridPane.columnIndex="0">
+                            <font>
+                                <Font size="14.0"/>
+                            </font>
+                        </Label>
+                        <Label fx:id="registrationDateLabel" text="April 25, 2025" GridPane.rowIndex="3" GridPane.columnIndex="1"
                                style="-fx-text-fill: #2d3748; -fx-font-weight: bold;">
                             <font>
                                 <Font size="14.0"/>
@@ -122,12 +135,12 @@
                         </Label>
 
                         <!-- Last Login -->
-                        <Label text="Last Login" textFill="#78909c" GridPane.rowIndex="3" GridPane.columnIndex="0">
+                        <Label text="Last Login" textFill="#78909c" GridPane.rowIndex="4" GridPane.columnIndex="0">
                             <font>
                                 <Font size="14.0"/>
                             </font>
                         </Label>
-                        <Label fx:id="lastLoginLabel" text="Today at 10:35 AM" GridPane.rowIndex="3" GridPane.columnIndex="1"
+                        <Label fx:id="lastLoginLabel" text="Today at 10:35 AM" GridPane.rowIndex="4" GridPane.columnIndex="1"
                                style="-fx-text-fill: #2d3748; -fx-font-weight: bold;">
                             <font>
                                 <Font size="14.0"/>
@@ -135,12 +148,12 @@
                         </Label>
 
                         <!-- Login Count -->
-                        <Label text="Login Count" textFill="#78909c" GridPane.rowIndex="4" GridPane.columnIndex="0">
+                        <Label text="Login Count" textFill="#78909c" GridPane.rowIndex="5" GridPane.columnIndex="0">
                             <font>
                                 <Font size="14.0"/>
                             </font>
                         </Label>
-                        <Label fx:id="loginCountLabel" text="24" GridPane.rowIndex="4" GridPane.columnIndex="1"
+                        <Label fx:id="loginCountLabel" text="24" GridPane.rowIndex="5" GridPane.columnIndex="1"
                                style="-fx-text-fill: #2d3748; -fx-font-weight: bold;">
                             <font>
                                 <Font size="14.0"/>

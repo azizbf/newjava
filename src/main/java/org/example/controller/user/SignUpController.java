@@ -12,7 +12,10 @@ import javafx.scene.control.ComboBox;
 import javafx.util.Duration;
 import org.example.models.user.User;
 import utils.dataSource;
+import org.mindrot.jbcrypt.BCrypt;
 
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
@@ -41,6 +44,9 @@ public class SignUpController {
 
     @FXML
     private TextField phoneField;
+
+    @FXML
+    private TextField cinField;
 
     @FXML
     private Label errorLabel;
@@ -82,6 +88,7 @@ public class SignUpController {
         passwordField.textProperty().addListener((observable, oldValue, newValue) -> errorLabel.setVisible(false));
         confirmPasswordField.textProperty().addListener((observable, oldValue, newValue) -> errorLabel.setVisible(false));
         phoneField.textProperty().addListener((observable, oldValue, newValue) -> errorLabel.setVisible(false));
+        cinField.textProperty().addListener((observable, oldValue, newValue) -> errorLabel.setVisible(false));
         roleComboBox.setItems(FXCollections.observableArrayList("Client", "Admin"));
         roleComboBox.setValue("Client"); // Default role
         roleComboBox.valueProperty().addListener((observable, oldValue, newValue) -> errorLabel.setVisible(false));
@@ -102,9 +109,10 @@ public class SignUpController {
         String email = emailField.getText().trim();
         String password = passwordField.getText();
         String phone = phoneField.getText().trim();
+        String cin = cinField.getText().trim();
 
         // Create and save user
-        User newUser = createUserObject(name, email, password, phone, roleComboBox.getValue());
+        User newUser = createUserObject(name, email, password, phone, cin, roleComboBox.getValue());
         boolean success = saveUser(newUser);
 
         if (success) {
@@ -202,11 +210,13 @@ public class SignUpController {
      * @param email User's email address
      * @param password User's password
      * @param phone User's phone number
+     * @param cin User's CIN number
+     * @param role User's role
      * @return A new User object
      */
-    private User createUserObject(String name, String email, String password, String phone, String role) {
+    private User createUserObject(String name, String email, String password, String phone, String cin, String role) {
         int id = 0;
-        String roles = "client";
+        String roles = role.toLowerCase();
         int loginCount = 0;
         String imageUrl = "default_profile.png";
         LocalDateTime penalizedUntil = null;
@@ -215,11 +225,12 @@ public class SignUpController {
                 id,
                 email,
                 password,
-                role,
+                roles,
                 name,
                 loginCount,
                 imageUrl,
                 phone,
+                cin,
                 penalizedUntil
         );
     }
@@ -238,19 +249,23 @@ public class SignUpController {
             try {
                 Connection conn = dataSource.getInstance().getConnection();
 
-                String query = "INSERT INTO user (email, roles, password, name, login_count, image_url, numtel, penalized_until) " +
-                        "VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+                String query = "INSERT INTO user (email, roles, password, name, login_count, image_url, numtel, cin, penalized_until) " +
+                        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
                 PreparedStatement stmt = conn.prepareStatement(query);
 
+                // Hash the password before saving
+                String hashedPassword = BCrypt.hashpw(user.getPassword(), BCrypt.gensalt());
+
                 stmt.setString(1, user.getEmail());
                 stmt.setString(2, user.getRoles());
-                stmt.setString(3, user.getPassword());
+                stmt.setString(3, hashedPassword); // Store the hashed password instead of plain text
                 stmt.setString(4, user.getName());
                 stmt.setInt(5, login_count);
                 stmt.setString(6, user.getImageUrl());
                 stmt.setString(7, user.getNumTel());
-                stmt.setTimestamp(8, Timestamp.valueOf(penalized_until));
+                stmt.setString(8, user.getCin());
+                stmt.setTimestamp(9, Timestamp.valueOf(penalized_until));
 
                 int rowsInserted = stmt.executeUpdate();
 
@@ -333,4 +348,55 @@ public class SignUpController {
     public String getCreatedUserEmail() {
         return createdUserEmail;
     }
+
+
+    @FXML
+    private void scanCIN() {
+        try {
+            ProcessBuilder processBuilder = new ProcessBuilder("python", "\"C:\\Users\\Lenovo\\Desktop\\newjava\\src\\main\\resources\\IntelligentScanner\\cinScanner.py\"");
+            processBuilder.redirectErrorStream(true);
+            Process process = processBuilder.start();
+
+
+            BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
+            String cinNumber = reader.readLine();
+            process.waitFor();
+
+
+            if (cinNumber != null) {
+                javafx.application.Platform.runLater(() -> cinField.setText(cinNumber));
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    @FXML
+    private void scanName() {
+        try {
+            // Create process builder for the Python script
+            ProcessBuilder processBuilder = new ProcessBuilder("python", "src/main/resources/carteEtudiantScanner/carteScanner.py");
+            processBuilder.redirectErrorStream(true);
+            Process process = processBuilder.start();
+
+            // Read the output from the Python script
+            BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
+            String scannedName = reader.readLine();
+
+            // Wait for the process to complete
+            int exitCode = process.waitFor();
+
+            if (exitCode == 0 && scannedName != null && !scannedName.trim().isEmpty()) {
+                // Update the name field with the scanned name
+                nameField.setText(scannedName.trim());
+                showSuccess("Name scanned successfully!");
+            } else {
+                showError("Failed to scan name. Please try again or enter manually.");
+            }
+        } catch (Exception e) {
+            showError("Error running scanner: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
 }
