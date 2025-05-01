@@ -13,6 +13,9 @@ import javafx.util.Duration;
 import org.example.models.user.User;
 import utils.dataSource;
 import org.mindrot.jbcrypt.BCrypt;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
+import org.example.service.CaptchaService;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
@@ -60,6 +63,15 @@ public class SignUpController {
     @FXML
     private Button closeButton;
 
+    @FXML
+    private ImageView captchaImageView;
+
+    @FXML
+    private TextField captchaField;
+
+    @FXML
+    private Button refreshCaptchaButton;
+
     // Email validation pattern
     private static final Pattern EMAIL_PATTERN =
             Pattern.compile("^[A-Za-z0-9+_.-]+@(.+)$");
@@ -77,6 +89,8 @@ public class SignUpController {
     // Store the email of the created user for pre-filling login form
     private String createdUserEmail = "";
 
+    private final CaptchaService captchaService = new CaptchaService();
+
     /**
      * Initialize the controller
      */
@@ -92,6 +106,31 @@ public class SignUpController {
         roleComboBox.setItems(FXCollections.observableArrayList("Client", "Admin"));
         roleComboBox.setValue("Client"); // Default role
         roleComboBox.valueProperty().addListener((observable, oldValue, newValue) -> errorLabel.setVisible(false));
+
+        // Initialize captcha image
+        updateCaptchaImage();
+    }
+
+    @FXML
+    private void handleRefreshCaptcha() {
+        captchaService.generateNewCaptcha();
+        updateCaptchaImage();
+    }
+
+    private void updateCaptchaImage() {
+        Image captchaImage = captchaService.getCurrentCaptchaImage();
+        if (captchaImage != null) {
+            captchaImageView.setImage(captchaImage);
+            // Add error handling for image loading
+            captchaImage.errorProperty().addListener((observable, oldValue, newValue) -> {
+                if (newValue) {
+                    showError("Failed to load captcha image. Please try refreshing.");
+                    System.err.println("Captcha image loading error: " + captchaImage.getException());
+                }
+            });
+        } else {
+            showError("Failed to load captcha image. Please try refreshing.");
+        }
     }
 
     /**
@@ -99,15 +138,35 @@ public class SignUpController {
      */
     @FXML
     private void handleSignUp() {
-        // Validate all inputs
+        String email = emailField.getText().trim();
+        String password = passwordField.getText();
+        String confirmPassword = confirmPasswordField.getText();
+        String captchaInput = captchaField.getText().trim();
+
+        // Validate inputs
+        if (email.isEmpty() || password.isEmpty() || confirmPassword.isEmpty() || captchaInput.isEmpty()) {
+            showError("Please fill in all fields");
+            return;
+        }
+
+        if (!password.equals(confirmPassword)) {
+            showError("Passwords do not match");
+            return;
+        }
+
+        if (!captchaService.validateCaptcha(captchaInput)) {
+            showError("Invalid captcha. Please try again.");
+            handleRefreshCaptcha();
+            return;
+        }
+
+        // Validate all other inputs
         if (!validateInputs()) {
             return;
         }
 
         // Get user data
         String name = nameField.getText().trim();
-        String email = emailField.getText().trim();
-        String password = passwordField.getText();
         String phone = phoneField.getText().trim();
         String cin = cinField.getText().trim();
 
@@ -151,44 +210,33 @@ public class SignUpController {
         }
 
         // Check if email is provided and valid
-        String email = emailField.getText().trim();
-        if (email.isEmpty()) {
+        if (emailField.getText().trim().isEmpty()) {
             showError("Please enter your email address");
             emailField.requestFocus();
             return false;
         }
 
-        if (!EMAIL_PATTERN.matcher(email).matches()) {
+        if (!EMAIL_PATTERN.matcher(emailField.getText().trim()).matches()) {
             showError("Please enter a valid email address");
             emailField.requestFocus();
             return false;
         }
 
         // Check if password is provided and meets requirements
-        String password = passwordField.getText();
-        if (password.isEmpty()) {
+        if (passwordField.getText().isEmpty()) {
             showError("Please enter a password");
             passwordField.requestFocus();
             return false;
         }
 
-        if (password.length() < 6) {
+        if (passwordField.getText().length() < 6) {
             showError("Password must be at least 6 characters long");
             passwordField.requestFocus();
             return false;
         }
 
-        // Check if passwords match
-        String confirmPassword = confirmPasswordField.getText();
-        if (!password.equals(confirmPassword)) {
-            showError("Passwords do not match");
-            confirmPasswordField.requestFocus();
-            return false;
-        }
-
         // Check if phone number is valid (if provided)
-        String phone = phoneField.getText().trim();
-        if (!phone.isEmpty() && !PHONE_PATTERN.matcher(phone).matches()) {
+        if (!phoneField.getText().trim().isEmpty() && !PHONE_PATTERN.matcher(phoneField.getText().trim()).matches()) {
             showError("Please enter a valid phone number");
             phoneField.requestFocus();
             return false;
@@ -349,19 +397,16 @@ public class SignUpController {
         return createdUserEmail;
     }
 
-
     @FXML
     private void scanCIN() {
         try {
-            ProcessBuilder processBuilder = new ProcessBuilder("python", "\"C:\\Users\\Lenovo\\Desktop\\newjava\\src\\main\\resources\\IntelligentScanner\\cinScanner.py\"");
+            ProcessBuilder processBuilder = new ProcessBuilder("python", "\"C:\\Users\\Expert Gaming\\Desktop\\newjava\\src\\main\\resources\\IntelligentScanner\\cinScanner.py\"");
             processBuilder.redirectErrorStream(true);
             Process process = processBuilder.start();
-
 
             BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
             String cinNumber = reader.readLine();
             process.waitFor();
-
 
             if (cinNumber != null) {
                 javafx.application.Platform.runLater(() -> cinField.setText(cinNumber));
@@ -398,5 +443,4 @@ public class SignUpController {
             e.printStackTrace();
         }
     }
-
 }

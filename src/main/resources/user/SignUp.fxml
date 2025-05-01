@@ -7,10 +7,12 @@
 <?import javafx.scene.control.ComboBox?>
 <?import javafx.scene.layout.AnchorPane?>
 <?import javafx.scene.layout.VBox?>
+<?import javafx.scene.layout.HBox?>
 <?import javafx.scene.text.Font?>
 <?import javafx.geometry.Insets?>
 <?import javafx.scene.effect.DropShadow?>
 <?import javafx.scene.control.Separator?>
+<?import javafx.scene.image.ImageView?>
 
 <AnchorPane prefHeight="650.0" prefWidth="400.0" style="-fx-background-color: linear-gradient(to bottom right, #1a2a6c, #4286f4);" xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1" fx:controller="org.example.controller.user.SignUpController">
     <children>
@@ -107,6 +109,26 @@
                         <Font name="Segoe UI" size="12.0" />
                     </font>
                 </Button>
+
+                <!-- Captcha Section -->
+                <HBox spacing="10" alignment="CENTER">
+                    <ImageView fx:id="captchaImageView" fitWidth="150" fitHeight="50" preserveRatio="true" pickOnBounds="true">
+                        <HBox.margin>
+                            <Insets top="5.0" bottom="5.0"/>
+                        </HBox.margin>
+                    </ImageView>
+                    <Button fx:id="refreshCaptchaButton" text="Refresh" onAction="#handleRefreshCaptcha">
+                        <HBox.margin>
+                            <Insets top="5.0" bottom="5.0"/>
+                        </HBox.margin>
+                    </Button>
+                </HBox>
+                
+                <TextField fx:id="captchaField" promptText="Enter captcha text" style="-fx-background-radius: 5; -fx-border-color: #e0e0e0; -fx-border-radius: 5;">
+                    <font>
+                        <Font size="14.0" />
+                    </font>
+                </TextField>
             </children>
         </VBox>
     </children>

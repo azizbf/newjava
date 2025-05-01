@@ -10,9 +10,20 @@ import javafx.scene.layout.*;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 import javafx.geometry.Insets;
+import javafx.geometry.Pos;
 import org.example.controller.login.SessionManager;
 import org.example.models.user.User;
+import org.example.models.Badge;
 import utils.dataSource;
+import org.example.service.BadgeService;
+import javafx.scene.layout.FlowPane;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
+import javafx.collections.FXCollections;
+import javafx.beans.property.SimpleStringProperty;
+import javafx.beans.property.SimpleIntegerProperty;
+import javafx.scene.control.TableView;
+import javafx.scene.control.TableColumn;
 
 import java.io.File;
 import java.io.IOException;
@@ -26,6 +37,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Optional;
 import java.util.ResourceBundle;
+import java.util.List;
 
 /**
  * Controller for the client account display screen
@@ -74,6 +86,18 @@ public class UserFrontController implements Initializable {
     @FXML
     private Label cinLabel;
 
+    @FXML
+    private Label averageRatingLabel;
+
+    @FXML
+    private FlowPane badgesFlowPane;
+
+    @FXML
+    private Button giveBadgeButton;
+
+    @FXML
+    private BorderPane mainContent;
+
     // Date formatter for display
     private final DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("MMMM d, yyyy");
     private final DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("h:mm a");
@@ -86,6 +110,8 @@ public class UserFrontController implements Initializable {
 
     // User ID passed from FrontMenu
     private int userId;
+
+    private final BadgeService badgeService = new BadgeService();
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
@@ -111,6 +137,24 @@ public class UserFrontController implements Initializable {
 
         // Set toggle button style change based on selection
         styleToggleButton();
+
+        // Setup badge button handler
+        giveBadgeButton.setOnAction(event -> handleGiveBadge());
+        
+        // Show admin button if user is an admin
+        if (currentUser.getRoles().contains("ROLE_ADMIN")) {
+            Button adminButton = new Button("Admin Functions");
+            adminButton.setStyle("-fx-background-color: #673AB7; -fx-text-fill: white;");
+            adminButton.setOnAction(event -> showAdminSection());
+            // Add the button to the UI (you'll need to adjust this based on your layout)
+            if (badgesFlowPane.getParent() instanceof VBox) {
+                VBox container = (VBox) badgesFlowPane.getParent();
+                container.getChildren().add(adminButton);
+            }
+        }
+        
+        // Load badges
+        loadBadges();
     }
 
     /**
@@ -475,11 +519,54 @@ public class UserFrontController implements Initializable {
         Optional<ButtonType> result = alert.showAndWait();
 
         if (result.isPresent() && result.get() == deactivateButton) {
-            // In a real application, you would deactivate the user's account in the database
-            showSuccess("Account deactivated successfully!");
+            try {
+                // Delete the user from the database
+                Connection conn = dataSource.getInstance().getConnection();
+                String query = "DELETE FROM user WHERE id = ?";
+                PreparedStatement stmt = conn.prepareStatement(query);
+                stmt.setInt(1, currentUser.getId());
 
-            // Logout after deactivation
-            handleLogout();
+                int rowsAffected = stmt.executeUpdate();
+
+                if (rowsAffected > 0) {
+                    // Clear the session
+                    sessionManager.clearSession();
+
+                    // Show success message
+                    Alert successAlert = new Alert(Alert.AlertType.INFORMATION);
+                    successAlert.setTitle("Account Deactivated");
+                    successAlert.setHeaderText("Your account has been deactivated successfully");
+                    successAlert.setContentText("You will now be redirected to the login page.");
+                    successAlert.showAndWait();
+
+                    // Redirect to login page
+                    loadLoginPage();
+                } else {
+                    showError("Failed to deactivate account");
+                }
+
+                stmt.close();
+                conn.close();
+            } catch (SQLException e) {
+                showError("Database error: " + e.getMessage());
+                e.printStackTrace();
+            }
+        }
+    }
+
+    /**
+     * Load the login page
+     */
+    private void loadLoginPage() {
+        try {
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/login.fxml"));
+            Parent root = loader.load();
+            Stage stage = (Stage) deactivateAccountButton.getScene().getWindow();
+            stage.setScene(new Scene(root));
+            stage.setTitle("Login");
+        } catch (IOException e) {
+            e.printStackTrace();
+            showError("Error loading login page: " + e.getMessage());
         }
     }
 
@@ -507,5 +594,172 @@ public class UserFrontController implements Initializable {
         alert.setHeaderText(null);
         alert.setContentText(message);
         alert.showAndWait();
+    }
+
+    private void loadBadges() {
+        // Clear existing badges
+        badgesFlowPane.getChildren().clear();
+        
+        // Get user's badges
+        List<Badge> badges = badgeService.getUserBadges(currentUser.getId());
+        
+        // Calculate and display average rating
+        double averageStars = badgeService.getUserAverageStars(currentUser.getId());
+        averageRatingLabel.setText(String.format("%.1f", averageStars));
+        
+        // Add badge images to the flow pane
+        for (Badge badge : badges) {
+            ImageView badgeImage = new ImageView();
+            badgeImage.setFitWidth(40);
+            badgeImage.setFitHeight(40);
+            badgeImage.setPreserveRatio(true);
+            
+            // Set the appropriate badge image based on type
+            String imagePath = badge.getTypeBadge().equals("gold") ? 
+                "/images/gold_badge.png" : "/images/silver_badge.png";
+            
+            try {
+                badgeImage.setImage(new Image(getClass().getResourceAsStream(imagePath)));
+            } catch (Exception e) {
+                System.err.println("Error loading badge image: " + e.getMessage());
+            }
+            
+            // Add tooltip with number of stars
+            Tooltip tooltip = new Tooltip(badge.getNbrStars() + " stars");
+            Tooltip.install(badgeImage, tooltip);
+            
+            badgesFlowPane.getChildren().add(badgeImage);
+        }
+    }
+
+    private void handleGiveBadge() {
+        // Create a dialog for giving a badge
+        Dialog<ButtonType> dialog = new Dialog<>();
+        dialog.setTitle("Give Badge");
+        dialog.setHeaderText("Select a user and give them a badge");
+
+        // Create the form fields
+        GridPane grid = new GridPane();
+        grid.setHgap(10);
+        grid.setVgap(10);
+        grid.setPadding(new Insets(20, 150, 10, 10));
+
+        TextField emailField = new TextField();
+        emailField.setPromptText("User Email");
+        ComboBox<Integer> starsComboBox = new ComboBox<>();
+        starsComboBox.getItems().addAll(1, 2, 3, 4, 5);
+        starsComboBox.setValue(3);
+
+        grid.add(new Label("User Email:"), 0, 0);
+        grid.add(emailField, 1, 0);
+        grid.add(new Label("Stars:"), 0, 1);
+        grid.add(starsComboBox, 1, 1);
+
+        dialog.getDialogPane().setContent(grid);
+
+        // Add buttons
+        ButtonType giveButton = new ButtonType("Give Badge", ButtonBar.ButtonData.OK_DONE);
+        dialog.getDialogPane().getButtonTypes().addAll(giveButton, ButtonType.CANCEL);
+
+        // Show the dialog and wait for a response
+        Optional<ButtonType> result = dialog.showAndWait();
+
+        if (result.isPresent() && result.get() == giveButton) {
+            try {
+                String email = emailField.getText();
+                int stars = starsComboBox.getValue();
+
+                if (badgeService.addBadgeByEmail(email, stars)) {
+                    showSuccess("Badge given successfully!");
+                } else {
+                    showError("Failed to give badge. Please try again.");
+                }
+            } catch (Exception e) {
+                showError("Error: " + e.getMessage());
+            }
+        }
+    }
+
+    private void showBadgeList() {
+        try {
+            List<Badge> badges = badgeService.getAllBadges();
+            
+            // Create a dialog to display the badge list
+            Dialog<Void> dialog = new Dialog<>();
+            dialog.setTitle("Badge List");
+            dialog.setHeaderText("All Badges in the System");
+
+            // Create a table to display badges
+            TableView<Badge> table = new TableView<>();
+            
+            // Create columns
+            TableColumn<Badge, String> emailColumn = new TableColumn<>("User Email");
+            emailColumn.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().getUserEmail()));
+            
+            TableColumn<Badge, Integer> starsColumn = new TableColumn<>("Stars");
+            starsColumn.setCellValueFactory(cellData -> new SimpleIntegerProperty(cellData.getValue().getNbrStars()).asObject());
+            
+            TableColumn<Badge, String> dateColumn = new TableColumn<>("Date Awarded");
+            dateColumn.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().getDateAwarded().toString()));
+
+            // Add columns to table
+            table.getColumns().addAll(emailColumn, starsColumn, dateColumn);
+            
+            // Set items
+            table.setItems(FXCollections.observableArrayList(badges));
+            
+            // Set table properties
+            table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+            table.setPrefHeight(400);
+            
+            // Add table to dialog
+            dialog.getDialogPane().setContent(table);
+            
+            // Add close button
+            dialog.getDialogPane().getButtonTypes().add(ButtonType.CLOSE);
+            
+            // Show dialog
+            dialog.showAndWait();
+        } catch (Exception e) {
+            showError("Error loading badge list: " + e.getMessage());
+        }
+    }
+
+    private void showAdminSection() {
+        // Create admin section content
+        VBox adminContent = new VBox(10);
+        adminContent.setPadding(new Insets(20));
+        adminContent.setAlignment(Pos.CENTER);
+
+        // Add buttons for admin actions
+        Button giveBadgeButton = new Button("Give Badge");
+        Button viewBadgeListButton = new Button("View Badge List");
+        Button backButton = new Button("Back");
+
+        // Style buttons
+        giveBadgeButton.setStyle("-fx-background-color: #4CAF50; -fx-text-fill: white;");
+        viewBadgeListButton.setStyle("-fx-background-color: #2196F3; -fx-text-fill: white;");
+        backButton.setStyle("-fx-background-color: #f44336; -fx-text-fill: white;");
+
+        // Add action handlers
+        giveBadgeButton.setOnAction(e -> handleGiveBadge());
+        viewBadgeListButton.setOnAction(e -> showBadgeList());
+        backButton.setOnAction(e -> showMainContent());
+
+        // Add buttons to admin content
+        adminContent.getChildren().addAll(giveBadgeButton, viewBadgeListButton, backButton);
+
+        // Set the admin content as the main content
+        mainContent.getChildren().clear();
+        mainContent.getChildren().add(adminContent);
+    }
+
+    private void showMainContent() {
+        // This method will be called to return to the main user view
+        if (mainContent != null) {
+            // Simply reload the current screen
+            loadUserData();
+            loadBadges();
+        }
     }
 }

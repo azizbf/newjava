@@ -9,7 +9,7 @@ public class EmailSender {
         try {
             ProcessBuilder processBuilder = new ProcessBuilder(
                     "C:\\Python313\\python.exe",
-                    "C:\\Users\\Lenovo\\Desktop\\newjava\\src\\main\\resources\\user\\emailsender.py",
+                    "C:\\Users\\Expert Gaming\\Desktop\\newjava\\src\\main\\resources\\user\\emailsender.py",
                     recipient,
                     subject,
                     body

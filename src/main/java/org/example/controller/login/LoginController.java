@@ -13,6 +13,7 @@ import javafx.stage.Stage;
 import javafx.stage.StageStyle;
 
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 
@@ -72,18 +73,63 @@ public class LoginController {
     @FXML
     private void handleScanCINLogin() {
         try {
+            // Get the absolute path to the Python script
+            String scriptPath = new File("src/main/resources/IntelligentScanner/cinScanner.py").getAbsolutePath();
+            System.out.println("Attempting to run Python script at: " + scriptPath);
+
+            // Create the process builder with proper error handling
             ProcessBuilder processBuilder = new ProcessBuilder(
                 "python",
-                "\"C:\\Users\\Lenovo\\Desktop\\newjava\\src\\main\\resources\\IntelligentScanner\\cinScanner.py\""
+                scriptPath
             );
+            
+            // Redirect error stream to standard output
             processBuilder.redirectErrorStream(true);
+            
+            // Start the process
             Process process = processBuilder.start();
-
+            
+            // Read both standard output and error streams
             BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
-            String cinNumber = reader.readLine();
-            process.waitFor();
+            String line;
+            StringBuilder output = new StringBuilder();
+            boolean missingPackages = false;
+            String packageInstallCommand = "";
+            
+            // Read all output
+            while ((line = reader.readLine()) != null) {
+                System.out.println("Python output: " + line);
+                output.append(line).append("\n");
+                
+                // Check for missing packages message
+                if (line.contains("Missing required Python packages")) {
+                    missingPackages = true;
+                }
+                if (line.contains("pip install")) {
+                    packageInstallCommand = line;
+                }
+            }
+            
+            // Wait for the process to complete
+            int exitCode = process.waitFor();
+            System.out.println("Python process exited with code: " + exitCode);
+            
+            if (missingPackages) {
+                showError("Required Python packages are missing. Please run: " + packageInstallCommand);
+                return;
+            }
+            
+            // Extract the CIN number from the output
+            String cinNumber = null;
+            for (String outputLine : output.toString().split("\n")) {
+                if (outputLine.matches("\\d{7,10}")) {
+                    cinNumber = outputLine.trim();
+                    break;
+                }
+            }
 
             if (cinNumber != null && !cinNumber.trim().isEmpty()) {
+                System.out.println("Found CIN number: " + cinNumber);
                 // Use the LoginHandler to process the CIN login
                 Stage stage = (Stage) scanCINButton.getScene().getWindow();
                 boolean success = LoginHandler.handleCINLogin(cinNumber.trim(), stage);
@@ -92,9 +138,11 @@ public class LoginController {
                     showError("No account found with this CIN");
                 }
             } else {
+                System.out.println("No valid CIN number found in output");
                 showError("Could not scan CIN. Please try again or use email login.");
             }
         } catch (Exception e) {
+            System.err.println("Error during CIN scanning: " + e.getMessage());
             e.printStackTrace();
             showError("Error scanning CIN: " + e.getMessage());
         }

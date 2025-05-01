@@ -33,11 +33,7 @@ public class Signup {
     }
 
     private void handleCreateAccount() {
-        // TODO: Implement user creation logic
-        // Validate inputs
-        // Check if passwords match
-        // Save user to database
-        // Show success message
+
     }
 
     private void handleBackToLogin() {

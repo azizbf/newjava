@@ -43,7 +43,7 @@ public class FrontMenu {
     private void initialize() {
         // Store button-path mappings
         buttonPathMap.put(forumButton, "/Forum/user_forum.fxml");
-        buttonPathMap.put(projectsButton, "/Projects/projects.fxml");
+        buttonPathMap.put(projectsButton, "/projet/UserProjectView.fxml");
         buttonPathMap.put(coursesButton, "/Courses/courses.fxml");
         buttonPathMap.put(webinarsButton, "/Webinars/webinars.fxml");
         buttonPathMap.put(competitionsButton, "/Competitions/competitions.fxml");
