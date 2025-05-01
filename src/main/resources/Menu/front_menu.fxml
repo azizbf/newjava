@@ -38,17 +38,11 @@
                     <Button fx:id="competitionsButton" styleClass="nav-button" text="Competitions" />
                 </HBox>
                 
-                <!-- User Profile and Sign Out Buttons -->
+                <!-- User Profile Button -->
                 <HBox spacing="10.0" alignment="CENTER">
                     <Button fx:id="profileButton" styleClass="profile-button" text="Profile">
                         <graphic>
                             <Label text="👤" />
-                        </graphic>
-                    </Button>
-                    
-                    <Button fx:id="signOutButton" styleClass="sign-out-button" text="Sign Out" onAction="#handleSignOut">
-                        <graphic>
-                            <Label text="🚪" />
                         </graphic>
                     </Button>
                 </HBox>

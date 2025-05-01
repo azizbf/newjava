@@ -27,11 +27,22 @@ import org.example.services.forum.PostReactionService;
 import org.example.services.UserService;
 import org.example.utils.InputValidator;
 import org.example.utils.InputValidator.ValidationResult;
+import org.example.utils.ProfanityFilter;
+import org.example.utils.EmojiSelector;
+import org.example.utils.FactService;
+import org.example.utils.DictionaryService;
+import org.example.utils.AiTitleSuggester;
 
 import java.sql.SQLException;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.ArrayList;
+import java.util.Map;
+import java.util.HashMap;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+import java.util.Optional;
 
 public class UserForumController {
     @FXML
@@ -70,6 +81,28 @@ public class UserForumController {
     private Button deletePostButton;
     @FXML
     private Button deleteCommentButton;
+    @FXML
+    private Button addCommentButton;
+    @FXML
+    private Button commentReplyButton;
+    @FXML
+    private TextField searchTextField;
+    @FXML
+    private Button searchButton;
+    @FXML
+    private Label factLabel;
+    @FXML
+    private Button refreshFactButton;
+    @FXML
+    private TextField dictionaryTextField;
+    @FXML
+    private Button lookupButton;
+    @FXML
+    private Button clearDictionaryButton;
+    @FXML
+    private Label dictionaryResultLabel;
+    @FXML
+    private Button suggestTitleButton;
     
     private PostService postService;
     private CommentService commentService;
@@ -83,6 +116,14 @@ public class UserForumController {
     private final int MAX_COMMENT_LENGTH = 1000;
     private List<Comment> currentComments = new ArrayList<>();
     private Comment selectedComment;
+    private boolean replyingToComment = false;
+    private VBox inlineReplyBox;
+    private int replyToCommentId = -1;
+    private VBox postEmojiPane;
+    private VBox commentEmojiPane;
+    private VBox replyEmojiPane;
+    private boolean emojiPaneVisible = false;
+    private ScheduledExecutorService factScheduler;
 
     @FXML
     private void initialize() {
@@ -93,8 +134,34 @@ public class UserForumController {
             reactionService = new PostReactionService();
             userService = new UserService();
             
+            // Initialize profanity filter with additional words if needed
+            ProfanityFilter.addBadWords(new String[] {
+                "damn", "hell", "crap", "shit", "fuck", "ass", "bitch"
+            });
+            
             // Find a valid user from the database
             initializeValidUser();
+            
+            // Hide the main reply button since we now use inline reply
+            if (commentReplyButton != null) {
+                commentReplyButton.setVisible(false);
+                commentReplyButton.setManaged(false);
+            }
+            
+            // Set up search field Enter key handler
+            if (searchTextField != null) {
+                searchTextField.setOnKeyPressed(event -> {
+                    if (event.getCode().toString().equals("ENTER")) {
+                        handleSearch();
+                    }
+                });
+            }
+            
+            // Set up Did You Know section
+            setupFactSection();
+            
+            // Set up Dictionary lookup section
+            setupDictionarySection();
             
             // Set up custom cell factories
             setupForumListViewCellFactory();
@@ -102,6 +169,9 @@ public class UserForumController {
             
             // Configure les écouteurs et validations en temps réel
             setupInputValidation();
+            
+            // Set up emoji selectors
+            setupEmojiSelectors();
             
             loadPosts();
             
@@ -188,8 +258,11 @@ public class UserForumController {
                         container.setPadding(new Insets(10));
                         container.setStyle("-fx-background-color: white; -fx-background-radius: 8; -fx-border-radius: 8; -fx-border-color: #e0e0e0; -fx-border-width: 1;");
                         
+                        // Filter post title for profanity
+                        String filteredTitle = ProfanityFilter.filter(post.getTitle());
+                        
                         // Post title with styling
-                        Label titleLabel = new Label(post.getTitle());
+                        Label titleLabel = new Label(filteredTitle);
                         titleLabel.setFont(Font.font("System", FontWeight.BOLD, 14));
                         titleLabel.setStyle("-fx-text-fill: #303030;");
                         
@@ -245,47 +318,119 @@ public class UserForumController {
                     setText(null);
                     setGraphic(null);
                     setStyle("-fx-background-color: transparent;");
+                } else if (commentStr.equals("No comments yet. Be the first to comment!")) {
+                    // Handle the "no comments" message
+                    setText(commentStr);
+                    setGraphic(null);
+                    setStyle("-fx-text-fill: #757575; -fx-font-style: italic;");
+                } else if (commentStr.startsWith("REPLY_FORM:")) {
+                    // This is our inline reply form
+                    setText(null);
+                    setGraphic(inlineReplyBox);
+                    setStyle("-fx-background-color: transparent;");
                 } else {
                     try {
-                        // Extract comment ID and content from string
-                        String[] parts = commentStr.split(" - ", 2);
-                        int commentId = Integer.parseInt(parts[0]);
-                        Comment comment = commentService.read(commentId);
+                        // Extract comment ID from string
+                        // Format is: "%d - %s[%s] %s%s - %s" (id, indent, username, replyPrefix, content, datetime)
+                        String[] parts = commentStr.split(" - ", 3);
                         
-                        // Create custom layout for each comment cell
-                        VBox container = new VBox();
-                        container.setSpacing(5);
-                        container.setPadding(new Insets(8));
-                        container.setStyle("-fx-background-color: white; -fx-background-radius: 8; -fx-border-radius: 8; -fx-border-color: #e0e0e0; -fx-border-width: 1;");
-                        
-                        // Comment user info
-                        HBox userInfoBox = new HBox();
-                        userInfoBox.setAlignment(Pos.CENTER_LEFT);
-                        userInfoBox.setSpacing(8);
-                        
-                        Label userLabel = new Label("User #" + comment.getOwnerId());
-                        userLabel.setFont(Font.font("System", FontWeight.BOLD, 12));
-                        userLabel.setStyle("-fx-text-fill: #5e35b1;");
-                        
-                        Region spacer = new Region();
-                        HBox.setHgrow(spacer, Priority.ALWAYS);
-                        
-                        Label dateLabel = new Label(comment.getCreatedAt().format(DateTimeFormatter.ofPattern("MMM dd, HH:mm")));
-                        dateLabel.setStyle("-fx-text-fill: #757575; -fx-font-size: 11px;");
-                        
-                        userInfoBox.getChildren().addAll(userLabel, spacer, dateLabel);
-                        
-                        // Comment content
-                        Label contentLabel = new Label(comment.getContent());
-                        contentLabel.setWrapText(true);
-                        contentLabel.setStyle("-fx-text-fill: #424242; -fx-font-size: 13px;");
-                        
-                        // Add all components to the container
-                        container.getChildren().addAll(userInfoBox, contentLabel);
-                        
-                        setGraphic(container);
-                        setText(null);
+                        if (parts.length >= 2) {
+                            String idAndIndent = parts[0];
+                            int commentId = Integer.parseInt(idAndIndent.trim().split(" ")[0]);
+                            Comment comment = null;
+                            
+                            // Find the comment in our cached list to avoid DB query
+                            for (Comment c : currentComments) {
+                                if (c.getId() == commentId) {
+                                    comment = c;
+                                    break;
+                                }
+                            }
+                            
+                            if (comment != null) {
+                                // Create custom layout for each comment cell
+                                VBox container = new VBox();
+                                container.setSpacing(5);
+                                container.setPadding(new Insets(8));
+                                
+                                // Determine if this is a reply (has parent ID)
+                                boolean isReply = comment.getParentId() != null;
+                                
+                                // Apply different styling based on whether it's a reply
+                                if (isReply) {
+                                    container.setStyle("-fx-background-color: #f3e5f5; -fx-background-radius: 8; -fx-border-radius: 8; -fx-border-color: #e0e0e0; -fx-border-width: 1; -fx-padding: 8 8 8 16;");
+                                } else {
+                                    container.setStyle("-fx-background-color: white; -fx-background-radius: 8; -fx-border-radius: 8; -fx-border-color: #e0e0e0; -fx-border-width: 1;");
+                                }
+                                
+                                // Comment user info
+                                HBox userInfoBox = new HBox();
+                                userInfoBox.setAlignment(Pos.CENTER_LEFT);
+                                userInfoBox.setSpacing(8);
+                                
+                                // Get username
+                                String username;
+                                try {
+                                    username = userService.getUsernameById(comment.getOwnerId());
+                                } catch (SQLException e) {
+                                    username = "User #" + comment.getOwnerId();
+                                }
+                                
+                                // Add reply indicator if it's a reply
+                                Label replyIndicator = null;
+                                if (isReply) {
+                                    replyIndicator = new Label("↪");
+                                    replyIndicator.setFont(Font.font("System", 14));
+                                    replyIndicator.setStyle("-fx-text-fill: #5e35b1; -fx-font-weight: bold;");
+                                }
+                                
+                                Label userLabel = new Label(username);
+                                userLabel.setFont(Font.font("System", FontWeight.BOLD, 12));
+                                userLabel.setStyle("-fx-text-fill: #5e35b1;");
+                                
+                                Region spacer = new Region();
+                                HBox.setHgrow(spacer, Priority.ALWAYS);
+                                
+                                Label dateLabel = new Label(comment.getCreatedAt().format(DateTimeFormatter.ofPattern("MMM dd, HH:mm")));
+                                dateLabel.setStyle("-fx-text-fill: #757575; -fx-font-size: 11px;");
+                                
+                                // Add Reply link
+                                final Comment finalComment = comment;
+                                Button replyButton = new Button("Reply");
+                                replyButton.setStyle("-fx-background-color: transparent; -fx-text-fill: #3949ab; -fx-font-weight: bold; -fx-padding: 0; -fx-cursor: hand; -fx-font-size: 11px;");
+                                replyButton.setOnAction(e -> {
+                                    showInlineReplyForm(finalComment);
+                                });
+                                
+                                if (replyIndicator != null) {
+                                    userInfoBox.getChildren().addAll(replyIndicator, userLabel, spacer, dateLabel, replyButton);
+                                } else {
+                                    userInfoBox.getChildren().addAll(userLabel, spacer, dateLabel, replyButton);
+                                }
+                                
+                                // Filter comment content for profanity
+                                String filteredContent = ProfanityFilter.filter(comment.getContent());
+                                
+                                // Comment content
+                                Label contentLabel = new Label(filteredContent);
+                                contentLabel.setWrapText(true);
+                                contentLabel.setStyle("-fx-text-fill: #424242; -fx-font-size: 13px;");
+                                
+                                // Add all components to the container
+                                container.getChildren().addAll(userInfoBox, contentLabel);
+                                
+                                setGraphic(container);
+                                setText(null);
+                            } else {
+                                setText(commentStr);
+                                setGraphic(null);
+                            }
+                        } else {
+                            setText(commentStr);
+                            setGraphic(null);
+                        }
                     } catch (Exception e) {
+                        e.printStackTrace();
                         setText("Error loading comment");
                         setGraphic(null);
                     }
@@ -325,9 +470,13 @@ public class UserForumController {
                 tagString.setLength(tagString.length() - 2);
             }
             
+            // Filter post content for profanity
+            String filteredTitle = ProfanityFilter.filter(post.getTitle());
+            String filteredContent = ProfanityFilter.filter(post.getContent());
+            
             // Set post details in post details section
-            postTitleLabel.setText(post.getTitle());
-            postContentLabel.setText(post.getContent());
+            postTitleLabel.setText(filteredTitle);
+            postContentLabel.setText(filteredContent);
             postTagsLabel.setText("Tags: " + tagString.toString());
             
             // Check if the post belongs to the current user and update delete button visibility
@@ -381,21 +530,22 @@ public class UserForumController {
                 return;
             }
             
+            // Group comments by their parent IDs
+            Map<Integer, List<Comment>> commentsByParent = new HashMap<>();
+            List<Comment> topLevelComments = new ArrayList<>();
+            
+            // Organize comments into parent-child groups
             for (Comment comment : currentComments) {
-                // Tenter de récupérer le nom d'utilisateur
-                String userInfo;
-                try {
-                    userInfo = userService.getUsernameById(comment.getOwnerId());
-                } catch (SQLException e) {
-                    userInfo = "User ID: " + comment.getOwnerId();
+                if (comment.getParentId() == null) {
+                    topLevelComments.add(comment);
+                } else {
+                    commentsByParent.computeIfAbsent(comment.getParentId(), k -> new ArrayList<>())
+                                    .add(comment);
                 }
-                
-                commentsListView.getItems().add(String.format("%d - [%s] %s - %s", 
-                    comment.getId(),
-                    userInfo,
-                    comment.getContent(),
-                    comment.getCreatedAt().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"))));
             }
+            
+            // Add comments recursively with indentation
+            addCommentsToListView(topLevelComments, commentsByParent, 0);
             
             // Configurer le gestionnaire de sélection pour les commentaires
             commentsListView.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> {
@@ -403,8 +553,26 @@ public class UserForumController {
                     // Analyser la sélection pour extraire l'ID du commentaire
                     try {
                         int index = commentsListView.getSelectionModel().getSelectedIndex();
-                        if (index >= 0 && index < currentComments.size()) {
-                            selectedComment = currentComments.get(index);
+                        // Get all comments in flattened form to match the list view
+                        List<Comment> flattenedComments = new ArrayList<>();
+                        Map<Integer, List<Comment>> commentMap = new HashMap<>();
+                        List<Comment> rootComments = new ArrayList<>();
+                        
+                        // Rebuild the hierarchy for proper indexing
+                        for (Comment comment : currentComments) {
+                            if (comment.getParentId() == null) {
+                                rootComments.add(comment);
+                            } else {
+                                commentMap.computeIfAbsent(comment.getParentId(), k -> new ArrayList<>())
+                                          .add(comment);
+                            }
+                        }
+                        
+                        // Get comments in display order
+                        flattenCommentsList(rootComments, commentMap, flattenedComments);
+                        
+                        if (index >= 0 && index < flattenedComments.size()) {
+                            selectedComment = flattenedComments.get(index);
                             
                             // Afficher le bouton de suppression uniquement si le commentaire appartient à l'utilisateur actuel
                             if (selectedComment.getOwnerId() == currentUserId) {
@@ -431,6 +599,63 @@ public class UserForumController {
             showError("Error loading comments: " + e.getMessage());
         }
     }
+    
+    private void addCommentsToListView(List<Comment> comments, Map<Integer, List<Comment>> commentsByParent, int level) {
+        if (comments == null) return;
+        
+        for (Comment comment : comments) {
+            // Récupérer le nom d'utilisateur
+            String userInfo;
+            try {
+                userInfo = userService.getUsernameById(comment.getOwnerId());
+            } catch (SQLException e) {
+                userInfo = "User ID: " + comment.getOwnerId();
+                System.out.println("Error getting user info for comment " + comment.getId() + ": " + e.getMessage());
+            }
+            
+            // Add indentation based on the level
+            String indent = "";
+            for (int i = 0; i < level; i++) {
+                indent += "    ";
+            }
+            
+            // Add reply indicator for nested comments
+            String replyPrefix = level > 0 ? "↪ " : "";
+            
+            // Filter comment content for profanity
+            String filteredContent = ProfanityFilter.filter(comment.getContent());
+            
+            String formattedComment = String.format("%d - %s[%s] %s%s - %s", 
+                comment.getId(),
+                indent,
+                userInfo,
+                replyPrefix,
+                filteredContent,
+                comment.getCreatedAt().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")));
+                
+            commentsListView.getItems().add(formattedComment);
+            
+            // Recursively add child comments
+            List<Comment> childComments = commentsByParent.get(comment.getId());
+            if (childComments != null) {
+                addCommentsToListView(childComments, commentsByParent, level + 1);
+            }
+        }
+    }
+    
+    private void flattenCommentsList(List<Comment> comments, Map<Integer, List<Comment>> commentsByParent, List<Comment> result) {
+        if (comments == null) return;
+        
+        for (Comment comment : comments) {
+            result.add(comment);
+            
+            // Recursively add child comments
+            List<Comment> childComments = commentsByParent.get(comment.getId());
+            if (childComments != null) {
+                flattenCommentsList(childComments, commentsByParent, result);
+            }
+        }
+    }
 
     private void updateReactionCounts(int postId) {
         try {
@@ -449,6 +674,10 @@ public class UserForumController {
         titleTextField.clear();
         postTextField.clear();
         tagTextField.clear();
+        
+        // Set a fact as suggested content
+        postTextField.setText(FactService.getFactSuggestion());
+        postTextField.selectAll();
         
         // Reset selection and hide details
         forumListView.getSelectionModel().clearSelection();
@@ -510,8 +739,16 @@ public class UserForumController {
         String content = postTextField.getText().trim();
         String tags = tagTextField.getText().trim();
         
+        // Check for profanity and warn the user if found
+        if (ProfanityFilter.containsProfanity(title) || ProfanityFilter.containsProfanity(content)) {
+            boolean proceed = showProfanityWarning();
+            if (!proceed) {
+                return;
+            }
+        }
+        
         try {
-            // Create the post
+            // Create the post (original text is stored, but displayed filtered)
             Post post = new Post();
             post.setTitle(title);
             post.setContent(content);
@@ -645,6 +882,72 @@ public class UserForumController {
     }
 
     @FXML
+    private void handleReplyComment() {
+        String selected = commentsListView.getSelectionModel().getSelectedItem();
+        if (selected == null || selected.equals("No comments yet. Be the first to comment!")) {
+            showError("No comment selected");
+            return;
+        }
+        
+        try {
+            int index = commentsListView.getSelectionModel().getSelectedIndex();
+            // Get all comments in flattened form to match the list view
+            List<Comment> flattenedComments = new ArrayList<>();
+            Map<Integer, List<Comment>> commentMap = new HashMap<>();
+            List<Comment> rootComments = new ArrayList<>();
+            
+            // Rebuild the hierarchy for proper indexing
+            for (Comment comment : currentComments) {
+                if (comment.getParentId() == null) {
+                    rootComments.add(comment);
+                } else {
+                    commentMap.computeIfAbsent(comment.getParentId(), k -> new ArrayList<>())
+                              .add(comment);
+                }
+            }
+            
+            // Get comments in display order
+            flattenCommentsList(rootComments, commentMap, flattenedComments);
+            
+            if (index >= 0 && index < flattenedComments.size()) {
+                selectedComment = flattenedComments.get(index);
+                
+                // Set up for reply mode
+                replyingToComment = true;
+                
+                // Clear textarea and focus it
+                commentTextArea.clear();
+                commentTextArea.requestFocus();
+                
+                // Update the button to show reply mode
+                if (addCommentButton != null) {
+                    addCommentButton.setText("Post Reply");
+                    addCommentButton.setStyle("-fx-background-color: #3949ab; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 24; -fx-padding: 8 15; -fx-cursor: hand;");
+                }
+                
+                // Set prompt text to indicate reply mode
+                commentTextArea.setPromptText("Reply to " + getUserDisplayName(selectedComment.getOwnerId()) + "...");
+                
+                // Show username of comment author being replied to
+                String userInfo = getUserDisplayName(selectedComment.getOwnerId());
+                showInfo("Replying to " + userInfo + ". Write your reply and press 'Post Reply'.");
+            }
+        } catch (Exception e) {
+            showError("Error preparing reply: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+    
+    private String getUserDisplayName(int userId) {
+        try {
+            return userService.getUsernameById(userId);
+        } catch (SQLException e) {
+            System.out.println("Error getting user info: " + e.getMessage());
+            return "User ID: " + userId;
+        }
+    }
+
+    @FXML
     private void handleComment() {
         // Valider le formulaire de commentaire
         if (!validateCommentForm()) {
@@ -653,21 +956,48 @@ public class UserForumController {
         
         String content = commentTextArea.getText().trim();
         
+        // Check for profanity and warn the user if found
+        if (ProfanityFilter.containsProfanity(content)) {
+            boolean proceed = showProfanityWarning();
+            if (!proceed) {
+                return;
+            }
+        }
+        
         try {
             Comment comment = new Comment();
             comment.setContent(content);
             comment.setPostId(selectedPost.getId());
             comment.setOwnerId(currentUserId);
+            
+            // Set parentId if replying to a comment
+            if (replyingToComment && selectedComment != null) {
+                comment.setParentId(selectedComment.getId());
+            }
+            
             commentService.create(comment);
             
-            // Clear the comment text field
+            // Clear the comment text field and reset state
             commentTextArea.clear();
             commentTextArea.setStyle("");
+            commentTextArea.setPromptText("Join the conversation...");
+            replyingToComment = false;
+            
+            // Reset button style
+            if (addCommentButton != null) {
+                addCommentButton.setText("Post Comment");
+                addCommentButton.setStyle("-fx-background-color: #5e35b1; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 24; -fx-padding: 8 15; -fx-cursor: hand;");
+            }
             
             // Show success message using Platform.runLater
             Platform.runLater(() -> {
-                showInfo("Commentaire ajouté avec succès !");
+                String message = replyingToComment ? "Reply added successfully!" : "Comment added successfully!";
+                showInfo(message);
             });
+            
+            // Reset state
+            selectedComment = null;
+            replyingToComment = false;
             
             // Reload comments with animation
             loadCommentsWithAnimation(selectedPost.getId());
@@ -687,10 +1017,24 @@ public class UserForumController {
                     comment.setContent(content);
                     comment.setPostId(selectedPost.getId());
                     comment.setOwnerId(currentUserId);
+                    
+                    // Set parentId if replying to a comment
+                    if (replyingToComment && selectedComment != null) {
+                        comment.setParentId(selectedComment.getId());
+                    }
+                    
                     commentService.create(comment);
                     
                     // Clear the comment text field
                     commentTextArea.clear();
+                    commentTextArea.setPromptText("Join the conversation...");
+                    replyingToComment = false;
+                    
+                    // Reset button style
+                    if (addCommentButton != null) {
+                        addCommentButton.setText("Post Comment");
+                        addCommentButton.setStyle("-fx-background-color: #5e35b1; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 24; -fx-padding: 8 15; -fx-cursor: hand;");
+                    }
                     
                     // Show messages using Platform.runLater
                     Platform.runLater(() -> {
@@ -699,8 +1043,13 @@ public class UserForumController {
                     
                     // Show success message using Platform.runLater
                     Platform.runLater(() -> {
-                        showInfo("Commentaire ajouté avec succès après réinitialisation !");
+                        String message = replyingToComment ? "Reply added successfully!" : "Comment added successfully!";
+                        showInfo(message);
                     });
+                    
+                    // Reset state
+                    selectedComment = null;
+                    replyingToComment = false;
                     
                     // Reload comments with animation
                     loadCommentsWithAnimation(selectedPost.getId());
@@ -812,10 +1161,29 @@ public class UserForumController {
 
     private void loadCommentsWithAnimation(int postId) throws SQLException {
         List<Comment> comments = commentService.readByPostId(postId);
+        currentComments = comments;
         
         commentsListView.getItems().clear();
-        for (Comment comment : comments) {
-            commentsListView.getItems().add(comment.getId() + " - " + comment.getContent());
+        
+        if (comments.isEmpty()) {
+            commentsListView.getItems().add("No comments yet. Be the first to comment!");
+        } else {
+            // Group comments by their parent IDs
+            Map<Integer, List<Comment>> commentsByParent = new HashMap<>();
+            List<Comment> topLevelComments = new ArrayList<>();
+            
+            // Organize comments into parent-child groups
+            for (Comment comment : comments) {
+                if (comment.getParentId() == null) {
+                    topLevelComments.add(comment);
+                } else {
+                    commentsByParent.computeIfAbsent(comment.getParentId(), k -> new ArrayList<>())
+                                    .add(comment);
+                }
+            }
+            
+            // Add comments recursively with indentation
+            addCommentsToListView(topLevelComments, commentsByParent, 0);
         }
         
         // Apply a fade transition to the comments list
@@ -826,7 +1194,7 @@ public class UserForumController {
         
         // Scroll to the last comment
         if (!comments.isEmpty()) {
-            commentsListView.scrollTo(comments.size() - 1);
+            commentsListView.scrollTo(commentsListView.getItems().size() - 1);
         }
     }
 
@@ -947,6 +1315,168 @@ public class UserForumController {
         titleCountLabel.setText("0/" + MAX_TITLE_LENGTH);
         contentCountLabel.setText("0/" + MAX_CONTENT_LENGTH);
         commentCountLabel.setText("0/" + MAX_COMMENT_LENGTH);
+        
+        // Add event listener for AI title suggestions
+        if (postTextField != null && titleTextField != null && suggestTitleButton != null) {
+            suggestTitleButton.setOnAction(event -> handleSuggestTitle());
+            
+            // Enable the suggest title button only when there's content
+            postTextField.textProperty().addListener((observable, oldValue, newValue) -> {
+                suggestTitleButton.setDisable(newValue == null || newValue.trim().isEmpty());
+            });
+        }
+    }
+
+    /**
+     * Handle the AI title suggestion button click
+     */
+    private void handleSuggestTitle() {
+        String content = postTextField.getText();
+        String currentTitle = titleTextField.getText();
+        String tags = tagTextField.getText();
+        
+        if (content == null || content.trim().isEmpty()) {
+            showWarning("Please enter some post content first to generate title suggestions.");
+            return;
+        }
+        
+        // Disable the button and show loading state
+        suggestTitleButton.setDisable(true);
+        suggestTitleButton.setText("Generating...");
+        
+        // Process in a background thread to avoid freezing the UI
+        new Thread(() -> {
+            try {
+                // Get title suggestions from the AI service with the complete content
+                final List<String> suggestions = AiTitleSuggester.suggestTitles(content, currentTitle, tags);
+                
+                // Update UI on the JavaFX thread
+                Platform.runLater(() -> {
+                    // Restore button state
+                    suggestTitleButton.setDisable(false);
+                    suggestTitleButton.setText("Suggest Title");
+                    
+                    if (suggestions.isEmpty()) {
+                        showInfo("No title suggestions could be generated. Try adding more content to your post.");
+                        return;
+                    }
+                    
+                    // Create a dialog to display the suggestions
+                    Dialog<String> dialog = new Dialog<>();
+                    dialog.setTitle("AI Title Suggestions");
+                    dialog.setHeaderText("Select a suggested title");
+                    
+                    // Set the button types
+                    ButtonType selectButtonType = new ButtonType("Select", ButtonBar.ButtonData.OK_DONE);
+                    dialog.getDialogPane().getButtonTypes().addAll(selectButtonType, ButtonType.CANCEL);
+                    
+                    // Create the suggestion list
+                    VBox vbox = new VBox(10);
+                    vbox.setPadding(new Insets(20, 10, 10, 10));
+                    
+                    ToggleGroup group = new ToggleGroup();
+                    
+                    for (String suggestion : suggestions) {
+                        RadioButton radioButton = new RadioButton(suggestion);
+                        radioButton.setToggleGroup(group);
+                        radioButton.setWrapText(true);
+                        radioButton.setMaxWidth(Double.MAX_VALUE);
+                        vbox.getChildren().add(radioButton);
+                        
+                        // Make first option selected by default
+                        if (suggestions.indexOf(suggestion) == 0) {
+                            radioButton.setSelected(true);
+                        }
+                    }
+                    
+                    // Create a styled dialog pane
+                    dialog.getDialogPane().setContent(vbox);
+                    dialog.getDialogPane().setPrefWidth(500);
+                    dialog.getDialogPane().getStyleClass().add("ai-suggestion-dialog");
+                    
+                    // Add CSS styling
+                    dialog.getDialogPane().getStylesheets().add(getClass().getResource("/Forum/forum_styles.css").toExternalForm());
+                    
+                    // Add a cool AI icon
+                    try {
+                        dialog.setGraphic(new Label("🤖"));
+                    } catch (Exception e) {
+                        // Fallback if emoji doesn't work
+                    }
+                    
+                    // Request focus on the select button by default
+                    Platform.runLater(() -> {
+                        Button selectButton = (Button) dialog.getDialogPane().lookupButton(selectButtonType);
+                        selectButton.setDefaultButton(true);
+                    });
+                    
+                    // Convert the result
+                    dialog.setResultConverter(dialogButton -> {
+                        if (dialogButton == selectButtonType) {
+                            RadioButton selectedRadioButton = (RadioButton) group.getSelectedToggle();
+                            return selectedRadioButton == null ? null : selectedRadioButton.getText();
+                        }
+                        return null;
+                    });
+                    
+                    // Add animation to the dialog
+                    dialog.setOnShowing(dialogEvent -> {
+                        // Apply fade-in effect to the suggestions list
+                        FadeTransition fadeIn = new FadeTransition(Duration.millis(400), vbox);
+                        fadeIn.setFromValue(0.0);
+                        fadeIn.setToValue(1.0);
+                        fadeIn.play();
+                    });
+                    
+                    // Show the dialog and process the result
+                    Optional<String> result = dialog.showAndWait();
+                    
+                    result.ifPresent(selectedTitle -> {
+                        // Update the title field with the selected suggestion
+                        titleTextField.setText(selectedTitle);
+                        
+                        // Show success notification
+                        showSuccess("Title updated with AI suggestion!");
+                    });
+                });
+                
+            } catch (Exception e) {
+                Platform.runLater(() -> {
+                    // Restore button state
+                    suggestTitleButton.setDisable(false);
+                    suggestTitleButton.setText("Suggest Title");
+                    
+                    showError("Error generating title suggestions: " + e.getMessage());
+                    e.printStackTrace();
+                });
+            }
+        }).start();
+    }
+
+    /**
+     * Shows a success alert
+     */
+    private void showSuccess(String message) {
+        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+        alert.setTitle("Success");
+        alert.setHeaderText(null);
+        alert.setContentText(message);
+        
+        // Style the alert
+        DialogPane dialogPane = alert.getDialogPane();
+        dialogPane.getStyleClass().add("success-alert");
+        
+        // Add a brief auto-close timer (3 seconds)
+        new Thread(() -> {
+            try {
+                Thread.sleep(3000);
+                Platform.runLater(alert::close);
+            } catch (Exception e) {
+                // Ignore
+            }
+        }).start();
+        
+        alert.show();
     }
 
     /**
@@ -1064,6 +1594,480 @@ public class UserForumController {
                     e.printStackTrace();
                 }
             }
+        });
+    }
+
+    private void showInlineReplyForm(Comment parentComment) {
+        if (inlineReplyBox == null) {
+            createInlineReplyBox();
+        }
+        
+        // Set the parent comment ID
+        replyToCommentId = parentComment.getId();
+        
+        // Update prompt text with parent username
+        String parentUsername = getUserDisplayName(parentComment.getOwnerId());
+        TextArea replyTextArea = (TextArea) inlineReplyBox.lookup("#inlineReplyTextArea");
+        if (replyTextArea != null) {
+            replyTextArea.setPromptText("Reply to " + parentUsername + "...");
+            replyTextArea.clear();
+            replyTextArea.requestFocus();
+        }
+        
+        // Find the index of the comment in the list
+        int commentIndex = -1;
+        for (int i = 0; i < commentsListView.getItems().size(); i++) {
+            String item = commentsListView.getItems().get(i);
+            if (!item.startsWith("REPLY_FORM:") && !item.equals("No comments yet. Be the first to comment!")) {
+                String[] parts = item.split(" - ", 3);
+                if (parts.length >= 2) {
+                    try {
+                        int id = Integer.parseInt(parts[0].trim().split(" ")[0]);
+                        if (id == parentComment.getId()) {
+                            commentIndex = i;
+                            break;
+                        }
+                    } catch (NumberFormatException e) {
+                        // Skip this item
+                    }
+                }
+            }
+        }
+        
+        // If we found the comment, add the reply form after it
+        if (commentIndex >= 0) {
+            // First, remove any existing reply form
+            for (int i = commentsListView.getItems().size() - 1; i >= 0; i--) {
+                if (commentsListView.getItems().get(i).startsWith("REPLY_FORM:")) {
+                    commentsListView.getItems().remove(i);
+                }
+            }
+            
+            // Add the reply form below the selected comment
+            commentsListView.getItems().add(commentIndex + 1, "REPLY_FORM:" + parentComment.getId());
+            
+            // Scroll to make it visible
+            commentsListView.scrollTo(commentIndex + 1);
+        }
+    }
+    
+    private void createInlineReplyBox() {
+        inlineReplyBox = new VBox();
+        inlineReplyBox.setSpacing(10);
+        inlineReplyBox.setPadding(new Insets(5, 5, 5, 20)); // More left padding for indentation
+        inlineReplyBox.setStyle("-fx-background-color: #f1f5ff; -fx-background-radius: 8; -fx-border-radius: 8; -fx-border-color: #d0d9ff; -fx-border-width: 1;");
+        
+        // Title
+        Label titleLabel = new Label("Write your reply");
+        titleLabel.setStyle("-fx-font-weight: bold; -fx-text-fill: #3949ab; -fx-font-size: 12px;");
+        
+        // Reply text area
+        TextArea replyTextArea = new TextArea();
+        replyTextArea.setId("inlineReplyTextArea");
+        replyTextArea.setPrefRowCount(3);
+        replyTextArea.setPrefHeight(60);
+        replyTextArea.setWrapText(true);
+        replyTextArea.setPromptText("Write your reply here...");
+        replyTextArea.setStyle("-fx-background-radius: 6; -fx-border-radius: 6; -fx-border-color: #d0d9ff;");
+        
+        // Emoji button for reply
+        Button emojiButton = new Button("😀");
+        emojiButton.setStyle("-fx-background-color: #3949ab; -fx-text-fill: white; -fx-font-size: 12px; -fx-background-radius: 20; -fx-padding: 2 8; -fx-cursor: hand;");
+        emojiButton.setTooltip(new Tooltip("Insert emoji"));
+        
+        // Create emoji pane for reply
+        replyEmojiPane = new VBox();
+        replyEmojiPane.setVisible(false);
+        replyEmojiPane.setManaged(false);
+        
+        emojiButton.setOnAction(e -> toggleEmojiPane(replyTextArea, replyEmojiPane, emojiButton));
+        
+        // Buttons
+        HBox buttonBox = new HBox();
+        buttonBox.setAlignment(Pos.CENTER_RIGHT);
+        buttonBox.setSpacing(10);
+        
+        Button cancelButton = new Button("Cancel");
+        cancelButton.setStyle("-fx-background-color: #e0e0e0; -fx-text-fill: #424242; -fx-background-radius: 16; -fx-padding: 5 15;");
+        cancelButton.setOnAction(e -> {
+            // Remove the reply form from the list
+            for (int i = commentsListView.getItems().size() - 1; i >= 0; i--) {
+                if (commentsListView.getItems().get(i).startsWith("REPLY_FORM:")) {
+                    commentsListView.getItems().remove(i);
+                    break;
+                }
+            }
+            replyToCommentId = -1;
+        });
+        
+        Button submitButton = new Button("Post Reply");
+        submitButton.setStyle("-fx-background-color: #3949ab; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 16; -fx-padding: 5 15;");
+        submitButton.setOnAction(e -> {
+            handleInlineReply(replyTextArea.getText());
+        });
+        
+        // Add character counter
+        Label charCountLabel = new Label("0/1000");
+        charCountLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: #757575;");
+        
+        // Update character count when text changes
+        replyTextArea.textProperty().addListener((obs, oldVal, newVal) -> {
+            int length = newVal.length();
+            charCountLabel.setText(length + "/1000");
+            
+            if (length > MAX_COMMENT_LENGTH) {
+                replyTextArea.setText(oldVal);
+                charCountLabel.setText(oldVal.length() + "/1000");
+                replyTextArea.setStyle("-fx-border-color: #ff5555; -fx-background-color: #fff0f0;");
+            } else if (length > 0) {
+                replyTextArea.setStyle("-fx-border-color: #4CAF50; -fx-background-color: #f0fff0;");
+            }
+        });
+        
+        buttonBox.getChildren().addAll(emojiButton, charCountLabel, cancelButton, submitButton);
+        
+        inlineReplyBox.getChildren().addAll(titleLabel, replyTextArea, buttonBox, replyEmojiPane);
+    }
+    
+    private void handleInlineReply(String content) {
+        if (content == null || content.trim().isEmpty()) {
+            showWarning("Reply cannot be empty");
+            return;
+        }
+        
+        if (replyToCommentId < 0) {
+            showWarning("Invalid comment to reply to");
+            return;
+        }
+        
+        if (content.length() > MAX_COMMENT_LENGTH) {
+            showWarning("Reply is too long (maximum " + MAX_COMMENT_LENGTH + " characters)");
+            return;
+        }
+        
+        // Check for profanity and warn the user if found
+        if (ProfanityFilter.containsProfanity(content)) {
+            boolean proceed = showProfanityWarning();
+            if (!proceed) {
+                return;
+            }
+        }
+        
+        try {
+            // Create the reply comment
+            Comment reply = new Comment();
+            reply.setContent(content.trim());
+            reply.setPostId(selectedPost.getId());
+            reply.setOwnerId(currentUserId);
+            reply.setParentId(replyToCommentId);
+            
+            commentService.create(reply);
+            
+            // Remove the reply form
+            for (int i = commentsListView.getItems().size() - 1; i >= 0; i--) {
+                if (commentsListView.getItems().get(i).startsWith("REPLY_FORM:")) {
+                    commentsListView.getItems().remove(i);
+                    break;
+                }
+            }
+            
+            // Reset state
+            replyToCommentId = -1;
+            
+            // Reload comments
+            loadCommentsWithAnimation(selectedPost.getId());
+            
+            // Show success message
+            showInfo("Reply added successfully!");
+            
+        } catch (SQLException e) {
+            showError("Error adding reply: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    @FXML
+    private void handleSearch() {
+        String searchTerm = searchTextField.getText().trim().toLowerCase();
+        
+        if (searchTerm.isEmpty()) {
+            // If search is empty, reload all posts
+            loadPosts();
+            return;
+        }
+        
+        try {
+            // Get all posts and filter them
+            List<Post> allPosts = postService.readAll();
+            List<Integer> filteredPostIds = new ArrayList<>();
+            
+            for (Post post : allPosts) {
+                boolean matchesTitle = post.getTitle().toLowerCase().contains(searchTerm);
+                boolean matchesContent = post.getContent().toLowerCase().contains(searchTerm);
+                
+                // Check tags
+                boolean matchesTags = false;
+                try {
+                    List<Tag> tags = tagService.getTagsForPost(post.getId());
+                    for (Tag tag : tags) {
+                        if (tag.getName().toLowerCase().contains(searchTerm)) {
+                            matchesTags = true;
+                            break;
+                        }
+                    }
+                } catch (SQLException e) {
+                    System.out.println("Error fetching tags for post " + post.getId() + ": " + e.getMessage());
+                }
+                
+                if (matchesTitle || matchesContent || matchesTags) {
+                    filteredPostIds.add(post.getId());
+                }
+            }
+            
+            // Update the UI with filtered posts
+            forumListView.getItems().clear();
+            if (filteredPostIds.isEmpty()) {
+                // No results found - show message
+                showInfo("No matching posts found for: " + searchTerm);
+                // Optionally add a placeholder in the list
+                loadPosts(); // Reload all posts
+            } else {
+                for (Integer postId : filteredPostIds) {
+                    forumListView.getItems().add(postId);
+                }
+                // Highlight first result
+                if (!forumListView.getItems().isEmpty()) {
+                    forumListView.getSelectionModel().select(0);
+                    forumListView.scrollTo(0);
+                }
+            }
+        } catch (SQLException e) {
+            showError("Error searching posts: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * Show a warning about profanity and ask the user if they want to proceed
+     * @return true if the user wants to proceed, false if they want to edit their content
+     */
+    private boolean showProfanityWarning() {
+        Alert alert = new Alert(Alert.AlertType.WARNING);
+        alert.setTitle("Profanity Detected");
+        alert.setHeaderText("Your post contains inappropriate language");
+        alert.setContentText("We've detected potentially inappropriate language in your content. " +
+                "This will be displayed with asterisks (*). Do you want to proceed or edit your content?");
+        
+        ButtonType proceedButton = new ButtonType("Proceed");
+        ButtonType editButton = new ButtonType("Edit Content");
+        
+        alert.getButtonTypes().setAll(proceedButton, editButton);
+        
+        ButtonType result = alert.showAndWait().orElse(editButton);
+        return result == proceedButton;
+    }
+
+    /**
+     * Set up emoji selectors for text areas
+     */
+    private void setupEmojiSelectors() {
+        // Create emoji selector for post text area
+        if (postTextField != null) {
+            postEmojiPane = new VBox();
+            postEmojiPane.setVisible(false);
+            postEmojiPane.setManaged(false);
+            
+            Button emojiButton = new Button("😀");
+            emojiButton.setStyle("-fx-background-color: #5e35b1; -fx-text-fill: white; -fx-font-size: 14px; -fx-background-radius: 20; -fx-padding: 4 10; -fx-cursor: hand;");
+            emojiButton.setTooltip(new Tooltip("Insert emoji"));
+            
+            emojiButton.setOnAction(e -> toggleEmojiPane(postTextField, postEmojiPane, emojiButton));
+            
+            // Find the parent of the post text area to add the emoji button and panel
+            if (postTextField.getParent() instanceof VBox) {
+                VBox parent = (VBox) postTextField.getParent();
+                int index = parent.getChildren().indexOf(postTextField);
+                
+                // Create HBox to contain the emoji button
+                HBox buttonBox = new HBox();
+                buttonBox.setAlignment(Pos.CENTER_RIGHT);
+                buttonBox.getChildren().add(emojiButton);
+                
+                // Add the emoji button below the text area
+                parent.getChildren().add(index + 1, buttonBox);
+                
+                // Add the emoji panel (initially hidden)
+                parent.getChildren().add(index + 2, postEmojiPane);
+            }
+        }
+        
+        // Create emoji selector for comment text area
+        if (commentTextArea != null) {
+            commentEmojiPane = new VBox();
+            commentEmojiPane.setVisible(false);
+            commentEmojiPane.setManaged(false);
+            
+            Button emojiButton = new Button("😀");
+            emojiButton.setStyle("-fx-background-color: #5e35b1; -fx-text-fill: white; -fx-font-size: 14px; -fx-background-radius: 20; -fx-padding: 4 10; -fx-cursor: hand;");
+            emojiButton.setTooltip(new Tooltip("Insert emoji"));
+            
+            emojiButton.setOnAction(e -> toggleEmojiPane(commentTextArea, commentEmojiPane, emojiButton));
+            
+            // Find the parent of the comment text area
+            if (commentTextArea.getParent() instanceof VBox) {
+                VBox parent = (VBox) commentTextArea.getParent();
+                int index = parent.getChildren().indexOf(commentTextArea);
+                
+                // Create HBox to contain the emoji button
+                HBox buttonBox = new HBox();
+                buttonBox.setAlignment(Pos.CENTER_RIGHT);
+                buttonBox.getChildren().add(emojiButton);
+                
+                // Add the emoji button below the text area
+                parent.getChildren().add(index + 1, buttonBox);
+                
+                // Add the emoji panel (initially hidden)
+                parent.getChildren().add(index + 2, commentEmojiPane);
+            }
+        }
+    }
+
+    /**
+     * Toggle the visibility of an emoji pane
+     */
+    private void toggleEmojiPane(TextInputControl textInput, VBox emojiPane, Button toggleButton) {
+        if (emojiPane.isVisible()) {
+            // Hide emoji pane
+            emojiPane.setVisible(false);
+            emojiPane.setManaged(false);
+            toggleButton.setText("😀");
+        } else {
+            // Show emoji pane and create its content if not created yet
+            if (emojiPane.getChildren().isEmpty()) {
+                emojiPane.getChildren().add(EmojiSelector.createEmojiSelector(textInput));
+            }
+            
+            emojiPane.setVisible(true);
+            emojiPane.setManaged(true);
+            toggleButton.setText("❌");
+            
+            // To prevent multiple emoji panes being open, close others
+            if (emojiPane != postEmojiPane && postEmojiPane != null) {
+                postEmojiPane.setVisible(false);
+                postEmojiPane.setManaged(false);
+            }
+            if (emojiPane != commentEmojiPane && commentEmojiPane != null) {
+                commentEmojiPane.setVisible(false);
+                commentEmojiPane.setManaged(false);
+            }
+            if (emojiPane != replyEmojiPane && replyEmojiPane != null) {
+                replyEmojiPane.setVisible(false);
+                replyEmojiPane.setManaged(false);
+            }
+        }
+    }
+
+    /**
+     * Set up the "Did You Know?" fact section
+     */
+    private void setupFactSection() {
+        if (factLabel != null) {
+            // Set initial loading message
+            factLabel.setText("Loading an interesting fact...");
+            
+            // Set up refresh button if available
+            if (refreshFactButton != null) {
+                refreshFactButton.setOnAction(e -> refreshFact());
+            }
+            
+            // Load first fact
+            refreshFact();
+            
+            // Schedule fact updates every 2 minutes
+            factScheduler = Executors.newSingleThreadScheduledExecutor();
+            factScheduler.scheduleAtFixedRate(
+                () -> Platform.runLater(this::refreshFact),
+                2, 2, TimeUnit.MINUTES
+            );
+        }
+    }
+
+    /**
+     * Refresh the displayed fact
+     */
+    private void refreshFact() {
+        if (factLabel != null) {
+            // Show loading indicator
+            factLabel.setText("Loading fact...");
+            
+            // Get fact asynchronously
+            FactService.getRandomFactAsync().thenAccept(fact -> {
+                Platform.runLater(() -> {
+                    // Apply fade transition
+                    FadeTransition fade = new FadeTransition(Duration.millis(500), factLabel);
+                    fade.setFromValue(0.3);
+                    fade.setToValue(1.0);
+                    
+                    factLabel.setText(fact);
+                    fade.play();
+                });
+            });
+        }
+    }
+
+    /**
+     * Set up the dictionary lookup section
+     */
+    private void setupDictionarySection() {
+        if (dictionaryTextField != null) {
+            // Set up Enter key handler for dictionary lookup
+            dictionaryTextField.setOnKeyPressed(event -> {
+                if (event.getCode().toString().equals("ENTER")) {
+                    handleDictionaryLookup();
+                }
+            });
+            
+            // Set up clear button
+            if (clearDictionaryButton != null) {
+                clearDictionaryButton.setOnAction(e -> {
+                    dictionaryTextField.clear();
+                    dictionaryResultLabel.setText("Enter a word to see its definition");
+                    
+                    // Apply fade transition for smooth effect
+                    FadeTransition fade = new FadeTransition(Duration.millis(300), dictionaryResultLabel);
+                    fade.setFromValue(0.3);
+                    fade.setToValue(1.0);
+                    fade.play();
+                });
+            }
+        }
+    }
+    
+    /**
+     * Handle the dictionary lookup request
+     */
+    @FXML
+    private void handleDictionaryLookup() {
+        String word = dictionaryTextField.getText().trim();
+        if (word.isEmpty()) {
+            showError("Please enter a word to look up");
+            return;
+        }
+        
+        // Show loading state
+        dictionaryResultLabel.setText("Looking up '" + word + "'...");
+        
+        // Fetch definition asynchronously
+        DictionaryService.getDefinitionAsync(word).thenAccept(definition -> {
+            Platform.runLater(() -> {
+                // Apply fade transition for smooth effect
+                FadeTransition fade = new FadeTransition(Duration.millis(500), dictionaryResultLabel);
+                fade.setFromValue(0.3);
+                fade.setToValue(1.0);
+                
+                dictionaryResultLabel.setText(definition);
+                fade.play();
+            });
         });
     }
 } 

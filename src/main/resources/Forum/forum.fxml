@@ -181,6 +181,11 @@
                                                         <DropShadow height="3.0" radius="1.0" width="3.0" color="rgba(0,0,0,0.1)" />
                                                     </effect>
                                                 </Button>
+                                                <Button text="💬 Répondre" onAction="#handleReplyComment" style="-fx-background-color: #2196F3; -fx-text-fill: white; -fx-background-radius: 20; -fx-padding: 6 12; -fx-cursor: hand; -fx-font-size: 12px;">
+                                                    <effect>
+                                                        <DropShadow height="3.0" radius="1.0" width="3.0" color="rgba(0,0,0,0.1)" />
+                                                    </effect>
+                                                </Button>
                                                 <Button text="🗑️ Supprimer" onAction="#handleDeleteComment" style="-fx-background-color: #F44336; -fx-text-fill: white; -fx-background-radius: 20; -fx-padding: 6 12; -fx-cursor: hand; -fx-font-size: 12px;">
                                                     <effect>
                                                         <DropShadow height="3.0" radius="1.0" width="3.0" color="rgba(0,0,0,0.1)" />
@@ -193,7 +198,7 @@
                                                 </effect>
                                             </TextArea>
                                             <HBox alignment="CENTER_RIGHT" spacing="10.0">
-                                                <Button text="Ajouter Commentaire" onAction="#handleComment" style="-fx-background-color: #1976D2; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 20; -fx-padding: 8 15; -fx-cursor: hand;">
+                                                <Button fx:id="addCommentButton" text="Ajouter Commentaire" onAction="#handleComment" style="-fx-background-color: #1976D2; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 20; -fx-padding: 8 15; -fx-cursor: hand;">
                                                     <effect>
                                                         <DropShadow height="3.0" radius="1.0" width="3.0" color="rgba(0,0,0,0.1)" />
                                                     </effect>

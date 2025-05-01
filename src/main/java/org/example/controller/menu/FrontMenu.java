@@ -38,9 +38,6 @@ public class FrontMenu {
     private Button profileButton;
     
     @FXML
-    private Button signOutButton;
-    
-    @FXML
     private AnchorPane contentPane;
     
     private Button selectedButton;
@@ -176,54 +173,6 @@ public class FrontMenu {
     }
     
     /**
-     * Handle sign out button click
-     */
-    @FXML
-    private void handleSignOut() {
-        // Create a confirmation dialog
-        Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
-        alert.setTitle("Sign Out");
-        alert.setHeaderText("Sign Out Confirmation");
-        alert.setContentText("Are you sure you want to sign out?");
-        
-        // Customize button text
-        ButtonType buttonTypeYes = new ButtonType("Yes");
-        ButtonType buttonTypeNo = new ButtonType("No");
-        
-        alert.getButtonTypes().setAll(buttonTypeYes, buttonTypeNo);
-        
-        // Show the dialog and wait for response
-        Optional<ButtonType> result = alert.showAndWait();
-        
-        if (result.isPresent() && result.get() == buttonTypeYes) {
-            try {
-                // Get the current stage
-                Stage currentStage = (Stage) signOutButton.getScene().getWindow();
-                
-                // Load the login screen
-                FXMLLoader loader = new FXMLLoader(getClass().getResource("/login.fxml"));
-                Parent root = loader.load();
-                Scene scene = new Scene(root);
-                
-                // Setup and display the login screen
-                currentStage.setScene(scene);
-                currentStage.setTitle("Esprit Login");
-                currentStage.centerOnScreen();
-                
-                // For debugging
-                System.out.println("User signed out: " + currentUserId);
-                
-                // Optional: reset any user session data or perform cleanup
-                // ...
-                
-            } catch (Exception e) {
-                System.err.println("Error during sign out: " + e.getMessage());
-                e.printStackTrace();
-            }
-        }
-    }
-    
-    /**
      * Forum button click handler for the feature cards
      */
     @FXML
@@ -257,7 +206,7 @@ public class FrontMenu {
     }
     
     /**
-     * Set the user ID for this menu
+     * Set the current user ID, typically called from login controller
      */
     public void setCurrentUserId(int userId) {
         this.currentUserId = userId;

@@ -120,16 +120,6 @@
                         <Insets top="30.0" />
                     </padding>
                 </VBox>
-                
-                <!-- Sign Out Button at Bottom -->
-                <Button fx:id="signOutButton" styleClass="admin-sign-out-button" prefHeight="50.0" prefWidth="220.0" text="Sign Out" onAction="#handleSignOut">
-                    <font>
-                        <Font name="Segoe UI" size="14.0" />
-                    </font>
-                    <graphic>
-                        <Label text="🚪" styleClass="menu-icon" />
-                    </graphic>
-                </Button>
             </children>
         </VBox>
 
@@ -156,26 +146,6 @@
         }
         .menu-button:pressed {
             -fx-background-color: rgba(255, 255, 255, 0.3) !important;
-        }
-        
-        /* Admin sign out button */
-        .admin-sign-out-button {
-            -fx-background-color: rgba(255, 77, 77, 0.6);
-            -fx-text-fill: white;
-            -fx-font-size: 14px;
-            -fx-alignment: CENTER_LEFT;
-            -fx-padding: 0 0 0 15;
-            -fx-border-radius: 8;
-            -fx-background-radius: 8;
-            -fx-font-weight: bold;
-        }
-        
-        .admin-sign-out-button:hover {
-            -fx-background-color: rgba(255, 77, 77, 0.8) !important;
-        }
-        
-        .admin-sign-out-button:pressed {
-            -fx-background-color: rgba(204, 51, 51, 1.0) !important;
         }
     </style>
 </AnchorPane>

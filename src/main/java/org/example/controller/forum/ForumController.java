@@ -21,6 +21,9 @@ import org.example.utils.InputValidator.ValidationResult;
 import java.sql.SQLException;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Map;
+import java.util.HashMap;
+import java.util.ArrayList;
 
 public class ForumController {
     @FXML
@@ -47,6 +50,8 @@ public class ForumController {
     private Label postAuthorLabel;
     @FXML
     private Label postDateLabel;
+    @FXML
+    private Button addCommentButton;
 
     private boolean editMode = false;
     private PostService postService;
@@ -57,6 +62,7 @@ public class ForumController {
     private Comment selectedComment;
     private int currentUserId = 1; // Temporary hardcoded user ID
     private boolean editingComment = false;
+    private boolean replyingToComment = false;
     private UserService userService;
 
     @FXML
@@ -221,23 +227,22 @@ public class ForumController {
             if (comments.isEmpty()) {
                 commentsListView.getItems().add("Aucun commentaire pour le moment");
             } else {
+                // Group comments by their parent IDs
+                Map<Integer, List<Comment>> commentsByParent = new HashMap<>();
+                List<Comment> topLevelComments = new ArrayList<>();
+                
+                // Organize comments into parent-child groups
                 for (Comment comment : comments) {
-                    // Récupérer le nom d'utilisateur
-                    String userInfo;
-                    try {
-                        userInfo = userService.getUsernameById(comment.getOwnerId());
-                    } catch (SQLException e) {
-                        userInfo = "User ID: " + comment.getOwnerId();
-                        System.out.println("Error getting user info for comment " + comment.getId() + ": " + e.getMessage());
+                    if (comment.getParentId() == null) {
+                        topLevelComments.add(comment);
+                    } else {
+                        commentsByParent.computeIfAbsent(comment.getParentId(), k -> new ArrayList<>())
+                                        .add(comment);
                     }
-                    
-                    String formattedComment = String.format("%d - [%s] %s - %s", 
-                        comment.getId(),
-                        userInfo,
-                        comment.getContent(),
-                        comment.getCreatedAt().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")));
-                    commentsListView.getItems().add(formattedComment);
                 }
+                
+                // Add comments recursively with indentation
+                addCommentsToListView(topLevelComments, commentsByParent, 0);
             }
             
             // Assurez-vous que la ListView est visible
@@ -248,6 +253,46 @@ public class ForumController {
         } catch (SQLException e) {
             showError("Error loading comments: " + e.getMessage());
             e.printStackTrace();
+        }
+    }
+    
+    private void addCommentsToListView(List<Comment> comments, Map<Integer, List<Comment>> commentsByParent, int level) {
+        if (comments == null) return;
+        
+        for (Comment comment : comments) {
+            // Récupérer le nom d'utilisateur
+            String userInfo;
+            try {
+                userInfo = userService.getUsernameById(comment.getOwnerId());
+            } catch (SQLException e) {
+                userInfo = "User ID: " + comment.getOwnerId();
+                System.out.println("Error getting user info for comment " + comment.getId() + ": " + e.getMessage());
+            }
+            
+            // Add indentation based on the level
+            String indent = "";
+            for (int i = 0; i < level; i++) {
+                indent += "    ";
+            }
+            
+            // Add reply indicator for nested comments
+            String replyPrefix = level > 0 ? "↪ " : "";
+            
+            String formattedComment = String.format("%d - %s[%s] %s%s - %s", 
+                comment.getId(),
+                indent,
+                userInfo,
+                replyPrefix,
+                comment.getContent(),
+                comment.getCreatedAt().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")));
+                
+            commentsListView.getItems().add(formattedComment);
+            
+            // Recursively add child comments
+            List<Comment> childComments = commentsByParent.get(comment.getId());
+            if (childComments != null) {
+                addCommentsToListView(childComments, commentsByParent, level + 1);
+            }
         }
     }
 
@@ -418,6 +463,11 @@ public class ForumController {
             comment.setOwnerId(currentUserId);
             comment.setContent(content);
             
+            // Set parentId if replying to a comment
+            if (replyingToComment && selectedComment != null) {
+                comment.setParentId(selectedComment.getId());
+            }
+            
             try {
                 commentService.create(comment);
                 System.out.println("Commentaire créé avec ID: " + comment.getId());
@@ -443,13 +493,18 @@ public class ForumController {
                 }
             }
             
-            // Clear comment text area
+            // Clear comment text area and reset state
             commentTextArea.clear();
+            resetCommentUI();
             
             // Refresh comments list with animation
             try {
                 loadCommentsWithAnimation(selectedPost.getId());
-                Platform.runLater(() -> showInfo("Comment added successfully"));
+                
+                String message = replyingToComment ? "Reply added successfully" : "Comment added successfully";
+                selectedComment = null;
+                replyingToComment = false;
+                Platform.runLater(() -> showInfo(message));
             } catch (SQLException e) {
                 // Fallback to regular load if animation fails
                 loadComments(selectedPost.getId());
@@ -458,50 +513,6 @@ public class ForumController {
         } catch (SQLException e) {
             Platform.runLater(() -> showError("Error adding comment: " + e.getMessage()));
             e.printStackTrace();
-        }
-    }
-    
-    private void loadCommentsWithAnimation(int postId) throws SQLException {
-        List<Comment> comments = commentService.readByPostId(postId);
-        
-        commentsListView.getItems().clear();
-        
-        if (comments.isEmpty()) {
-            commentsListView.getItems().add("Aucun commentaire pour le moment");
-        } else {
-            for (Comment comment : comments) {
-                // Récupérer le nom d'utilisateur
-                String userInfo;
-                try {
-                    userInfo = userService.getUsernameById(comment.getOwnerId());
-                } catch (SQLException e) {
-                    userInfo = "User ID: " + comment.getOwnerId();
-                    System.out.println("Error getting user info for comment " + comment.getId() + ": " + e.getMessage());
-                }
-                
-                String formattedComment = String.format("%d - [%s] %s - %s", 
-                    comment.getId(),
-                    userInfo,
-                    comment.getContent(),
-                    comment.getCreatedAt().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")));
-                commentsListView.getItems().add(formattedComment);
-            }
-        }
-        
-        System.out.println("Chargement avec animation de " + comments.size() + " commentaires");
-        
-        // Assurez-vous que la ListView est visible
-        commentsListView.setVisible(true);
-        
-        // Apply fade transition to comment list
-        FadeTransition fade = new FadeTransition(Duration.millis(300), commentsListView);
-        fade.setFromValue(0.5);
-        fade.setToValue(1.0);
-        fade.play();
-        
-        // Scroll to last comment if there are any
-        if (!comments.isEmpty()) {
-            commentsListView.scrollTo(comments.size() - 1);
         }
     }
 
@@ -681,6 +692,91 @@ public class ForumController {
     }
 
     @FXML
+    private void handleReplyComment() {
+        String selected = commentsListView.getSelectionModel().getSelectedItem();
+        if (selected == null || selected.equals("Aucun commentaire pour le moment")) {
+            showError("No comment selected");
+            return;
+        }
+        
+        try {
+            int index = commentsListView.getSelectionModel().getSelectedIndex();
+            List<Comment> comments = commentService.readByPostId(selectedPost.getId());
+            
+            // Find the actual comment from the flattened view
+            Comment actualComment = null;
+            int count = 0;
+            
+            Map<Integer, List<Comment>> commentsByParent = new HashMap<>();
+            List<Comment> topLevelComments = new ArrayList<>();
+            
+            // Group comments by their parent IDs
+            for (Comment comment : comments) {
+                if (comment.getParentId() == null) {
+                    topLevelComments.add(comment);
+                } else {
+                    commentsByParent.computeIfAbsent(comment.getParentId(), k -> new ArrayList<>())
+                                    .add(comment);
+                }
+            }
+            
+            List<Comment> flattenedComments = new ArrayList<>();
+            flattenCommentsList(topLevelComments, commentsByParent, flattenedComments);
+            
+            if (index >= 0 && index < flattenedComments.size()) {
+                selectedComment = flattenedComments.get(index);
+                
+                // Set up for reply mode
+                replyingToComment = true;
+                editingComment = false;
+                
+                // Clear textarea and focus it
+                commentTextArea.clear();
+                commentTextArea.requestFocus();
+                
+                // Update the UI to show we're in reply mode
+                if (addCommentButton != null) {
+                    addCommentButton.setText("Envoyer Réponse");
+                    addCommentButton.setStyle("-fx-background-color: #2196F3; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 20; -fx-padding: 8 15; -fx-cursor: hand;");
+                }
+                
+                // Set prompt text to indicate reply mode
+                commentTextArea.setPromptText("Répondre au commentaire de " + getUserDisplayName(selectedComment.getOwnerId()) + "...");
+                
+                // Show username of comment author being replied to
+                String userInfo = getUserDisplayName(selectedComment.getOwnerId());
+                showInfo("Replying to " + userInfo + ". Write your reply and press 'Send Reply'.");
+            }
+        } catch (SQLException e) {
+            showError("Error preparing reply: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+    
+    private String getUserDisplayName(int userId) {
+        try {
+            return userService.getUsernameById(userId);
+        } catch (SQLException e) {
+            System.out.println("Error getting user info: " + e.getMessage());
+            return "User ID: " + userId;
+        }
+    }
+    
+    private void flattenCommentsList(List<Comment> comments, Map<Integer, List<Comment>> commentsByParent, List<Comment> result) {
+        if (comments == null) return;
+        
+        for (Comment comment : comments) {
+            result.add(comment);
+            
+            // Recursively add child comments
+            List<Comment> childComments = commentsByParent.get(comment.getId());
+            if (childComments != null) {
+                flattenCommentsList(childComments, commentsByParent, result);
+            }
+        }
+    }
+
+    @FXML
     private void handleUpdateComment() {
         if (selectedComment == null) {
             showError("No comment selected for editing");
@@ -695,13 +791,7 @@ public class ForumController {
 
         try {
             // Get username for feedback message
-            String userInfo;
-            try {
-                userInfo = userService.getUsernameById(selectedComment.getOwnerId());
-            } catch (SQLException e) {
-                userInfo = "User ID: " + selectedComment.getOwnerId();
-                System.out.println("Error getting user info: " + e.getMessage());
-            }
+            String userInfo = getUserDisplayName(selectedComment.getOwnerId());
             
             selectedComment.setContent(content);
             commentService.update(selectedComment);
@@ -710,6 +800,7 @@ public class ForumController {
             commentTextArea.clear();
             selectedComment = null;
             editingComment = false;
+            resetCommentUI();
             
             // Refresh comments
             loadComments(selectedPost.getId());
@@ -767,5 +858,60 @@ public class ForumController {
         alert.setHeaderText(null);
         alert.setContentText(message);
         alert.showAndWait();
+    }
+
+    private void loadCommentsWithAnimation(int postId) throws SQLException {
+        List<Comment> comments = commentService.readByPostId(postId);
+        
+        commentsListView.getItems().clear();
+        
+        if (comments.isEmpty()) {
+            commentsListView.getItems().add("Aucun commentaire pour le moment");
+        } else {
+            // Group comments by their parent IDs
+            Map<Integer, List<Comment>> commentsByParent = new HashMap<>();
+            List<Comment> topLevelComments = new ArrayList<>();
+            
+            // Organize comments into parent-child groups
+            for (Comment comment : comments) {
+                if (comment.getParentId() == null) {
+                    topLevelComments.add(comment);
+                } else {
+                    commentsByParent.computeIfAbsent(comment.getParentId(), k -> new ArrayList<>())
+                                    .add(comment);
+                }
+            }
+            
+            // Add comments recursively with indentation
+            addCommentsToListView(topLevelComments, commentsByParent, 0);
+        }
+        
+        System.out.println("Chargement avec animation de " + comments.size() + " commentaires");
+        
+        // Assurez-vous que la ListView est visible
+        commentsListView.setVisible(true);
+        
+        // Apply fade transition to comment list
+        FadeTransition fade = new FadeTransition(Duration.millis(300), commentsListView);
+        fade.setFromValue(0.5);
+        fade.setToValue(1.0);
+        fade.play();
+        
+        // Scroll to last comment if there are any
+        if (!comments.isEmpty()) {
+            commentsListView.scrollTo(commentsListView.getItems().size() - 1);
+        }
+    }
+
+    private void resetCommentUI() {
+        replyingToComment = false;
+        editingComment = false;
+        selectedComment = null;
+        commentTextArea.setPromptText("Ajouter ou modifier un commentaire...");
+        
+        if (addCommentButton != null) {
+            addCommentButton.setText("Ajouter Commentaire");
+            addCommentButton.setStyle("-fx-background-color: #1976D2; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 20; -fx-padding: 8 15; -fx-cursor: hand;");
+        }
     }
 } 

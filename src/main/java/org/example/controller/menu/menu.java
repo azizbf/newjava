@@ -24,9 +24,6 @@ public class menu {
     private Button userForumButton;
     
     @FXML
-    private Button signOutButton;
-    
-    @FXML
     private Pane contentPane;
     
     private Button selectedButton;
@@ -89,54 +86,6 @@ public class menu {
         String fxmlPath = buttonPathMap.get(clickedButton);
         String errorMessage = "Error loading " + clickedButton.getText().toLowerCase();
         loadContentIntoPane(fxmlPath, errorMessage);
-    }
-    
-    /**
-     * Handle sign out button click
-     */
-    @FXML
-    private void handleSignOut() {
-        // Create a confirmation dialog
-        Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
-        alert.setTitle("Sign Out");
-        alert.setHeaderText("Sign Out Confirmation");
-        alert.setContentText("Are you sure you want to sign out from the admin panel?");
-        
-        // Customize button text
-        ButtonType buttonTypeYes = new ButtonType("Yes");
-        ButtonType buttonTypeNo = new ButtonType("No");
-        
-        alert.getButtonTypes().setAll(buttonTypeYes, buttonTypeNo);
-        
-        // Show the dialog and wait for response
-        Optional<ButtonType> result = alert.showAndWait();
-        
-        if (result.isPresent() && result.get() == buttonTypeYes) {
-            try {
-                // Get the current stage
-                Stage currentStage = (Stage) signOutButton.getScene().getWindow();
-                
-                // Load the login screen
-                FXMLLoader loader = new FXMLLoader(getClass().getResource("/login.fxml"));
-                Parent root = loader.load();
-                Scene scene = new Scene(root);
-                
-                // Setup and display the login screen
-                currentStage.setScene(scene);
-                currentStage.setTitle("Esprit Login");
-                currentStage.centerOnScreen();
-                
-                // For debugging
-                System.out.println("Admin signed out");
-                
-                // Optional: reset any user session data or perform cleanup
-                // ...
-                
-            } catch (Exception e) {
-                System.err.println("Error during sign out: " + e.getMessage());
-                e.printStackTrace();
-            }
-        }
     }
     
     /**

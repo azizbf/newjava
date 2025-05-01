@@ -138,26 +138,6 @@
     -fx-background-color: rgba(255, 255, 255, 0.3);
 }
 
-/* Sign Out Button */
-.sign-out-button {
-    -fx-background-color: rgba(255, 77, 77, 0.7);
-    -fx-background-radius: 30;
-    -fx-text-fill: white;
-    -fx-padding: 8 15;
-    -fx-font-weight: bold;
-}
-
-.sign-out-button:hover {
-    -fx-background-color: rgba(255, 77, 77, 0.9);
-    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.5), 5, 0, 0, 0);
-}
-
-.sign-out-button:pressed {
-    -fx-background-color: rgba(204, 51, 51, 1.0);
-    -fx-scale-x: 0.98;
-    -fx-scale-y: 0.98;
-}
-
 /* Front Content Pane */
 .front-content-pane {
     -fx-background-color: white;
