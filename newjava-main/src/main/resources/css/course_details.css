@@ -1,0 +1,167 @@
+/* Course Details Page Styling */
+
+/* Main container */
+.root {
+    -fx-background-color: white;
+    -fx-font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+}
+
+/* Course title styling */
+.course-title {
+    -fx-font-size: 24px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #333333;
+}
+
+/* Course subtitle styling */
+.course-subtitle {
+    -fx-font-size: 16px;
+    -fx-text-fill: #666666;
+    -fx-wrap-text: true;
+}
+
+/* Course description styling */
+.course-description {
+    -fx-font-size: 14px;
+    -fx-text-fill: #333333;
+    -fx-wrap-text: true;
+    -fx-line-spacing: 1.4;
+}
+
+/* Course publisher info */
+.publisher-info {
+    -fx-background-color: #f9f9f9;
+    -fx-background-radius: 5;
+    -fx-padding: 10px;
+    -fx-spacing: 10px;
+    -fx-border-color: #eeeeee;
+    -fx-border-radius: 5;
+}
+
+.publisher-label {
+    -fx-font-size: 12px;
+    -fx-text-fill: #666666;
+}
+
+.publisher-name {
+    -fx-font-size: 16px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #333333;
+}
+
+.publisher-description {
+    -fx-font-size: 14px;
+    -fx-text-fill: #555555;
+}
+
+/* Course image styling */
+.course-image {
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.2), 5, 0, 0, 1);
+    -fx-background-radius: 5;
+}
+
+/* Course stats box styling */
+.stats-box {
+    -fx-background-color: #f5f5f5;
+    -fx-background-radius: 5;
+    -fx-padding: 15;
+    -fx-spacing: 10;
+    -fx-border-color: #eeeeee;
+    -fx-border-radius: 5;
+}
+
+.stat-row {
+    -fx-spacing: 10;
+    -fx-alignment: center-left;
+}
+
+.stat-icon {
+    -fx-font-size: 16px;
+    -fx-text-fill: #666666;
+}
+
+.stat-value {
+    -fx-font-size: 14px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #333333;
+}
+
+.stat-label {
+    -fx-font-size: 14px;
+    -fx-text-fill: #666666;
+}
+
+/* Start learning button styling */
+.start-learning-button {
+    -fx-background-color: #4CAF50;
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+    -fx-font-size: 16px;
+    -fx-padding: 12px 24px;
+    -fx-background-radius: 5;
+    -fx-cursor: hand;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.2), 3, 0, 0, 1);
+}
+
+.start-learning-button:hover {
+    -fx-background-color: #45a049;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.3), 5, 0, 0, 2);
+}
+
+.start-learning-button:pressed {
+    -fx-background-color: #3d8b3d;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.3), 3, 0, 0, 1);
+}
+
+/* Course content section */
+.content-section {
+    -fx-padding: 15 0;
+}
+
+.section-title {
+    -fx-font-size: 18px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #333333;
+    -fx-padding: 0 0 10 0;
+}
+
+/* Lessons list styling */
+.lessons-list {
+    -fx-background-color: white;
+    -fx-background-radius: 5;
+    -fx-border-color: #eeeeee;
+    -fx-border-radius: 5;
+}
+
+.lessons-list .list-cell {
+    -fx-padding: 10 15;
+    -fx-background-color: transparent;
+    -fx-border-color: transparent transparent #eeeeee transparent;
+    -fx-border-width: 0 0 1 0;
+}
+
+.lessons-list .list-cell:hover {
+    -fx-background-color: #f5f5f5;
+}
+
+.lessons-list .list-cell:empty {
+    -fx-border-width: 0;
+}
+
+/* Back button styling */
+.back-button {
+    -fx-background-color: #f0f0f0;
+    -fx-text-fill: #555555;
+    -fx-font-size: 14px;
+    -fx-padding: 8 15;
+    -fx-background-radius: 5;
+    -fx-cursor: hand;
+}
+
+.back-button:hover {
+    -fx-background-color: #e0e0e0;
+}
+
+.back-button:pressed {
+    -fx-background-color: #d0d0d0;
+} 
