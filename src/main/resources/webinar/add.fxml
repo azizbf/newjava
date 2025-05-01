@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.text.Font?>
+
+<VBox xmlns="http://javafx.com/javafx"
+      xmlns:fx="http://javafx.com/fxml"
+      fx:controller="org.example.controller.webinar.add"
+      spacing="15" alignment="TOP_CENTER"
+      prefWidth="600.0" prefHeight="650.0">
+
+    <padding>
+        <Insets top="20" right="20" bottom="20" left="20"/>
+    </padding>
+
+    <Label text="Add New Webinar" style="-fx-font-size: 18; -fx-font-weight: bold;"/>
+
+    <GridPane vgap="10" hgap="10">
+        <columnConstraints>
+            <ColumnConstraints minWidth="100" prefWidth="150" hgrow="NEVER"/>
+            <ColumnConstraints prefWidth="400" hgrow="ALWAYS"/>
+        </columnConstraints>
+
+        <!-- Title -->
+        <Label text="Title:" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
+        <TextField fx:id="titleField" promptText="Enter webinar title" 
+                   GridPane.rowIndex="0" GridPane.columnIndex="1"/>
+
+        <!-- Description -->
+        <Label text="Description:" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
+        <TextArea fx:id="descriptionField" promptText="Enter webinar description" 
+                  prefHeight="80" wrapText="true"
+                  GridPane.rowIndex="1" GridPane.columnIndex="1"/>
+
+        <!-- Date and Time -->
+        <Label text="Date:" GridPane.rowIndex="2" GridPane.columnIndex="0"/>
+        <DatePicker fx:id="debutDateField" promptText="Select date" 
+                    GridPane.rowIndex="2" GridPane.columnIndex="1"/>
+
+        <Label text="Time (HH:MM):" GridPane.rowIndex="3" GridPane.columnIndex="0"/>
+        <TextField fx:id="debutTimeField" promptText="e.g., 14:30" 
+                   GridPane.rowIndex="3" GridPane.columnIndex="1"/>
+
+        <!-- Duration -->
+        <Label text="Duration (minutes):" GridPane.rowIndex="4" GridPane.columnIndex="0"/>
+        <TextField fx:id="durationField" 
+                   GridPane.rowIndex="4" GridPane.columnIndex="1"/>
+
+        <!-- Category -->
+        <Label text="Category:" GridPane.rowIndex="5" GridPane.columnIndex="0"/>
+        <TextField fx:id="categoryField" promptText="e.g., Technology, Education, etc." 
+                   GridPane.rowIndex="5" GridPane.columnIndex="1"/>
+
+        <!-- Tags -->
+        <Label text="Tags:" GridPane.rowIndex="6" GridPane.columnIndex="0"/>
+        <TextField fx:id="tagsField" promptText="Comma separated tags" 
+                   GridPane.rowIndex="6" GridPane.columnIndex="1"/>
+
+        <!-- Registration Required -->
+        <Label text="Registration Required:" GridPane.rowIndex="7" GridPane.columnIndex="0"/>
+        <CheckBox fx:id="registrationRequired" 
+                  GridPane.rowIndex="7" GridPane.columnIndex="1"/>
+
+        <!-- Max Attendees -->
+        <Label text="Max Attendees:" GridPane.rowIndex="8" GridPane.columnIndex="0"/>
+        <TextField fx:id="maxAttendeesField" 
+                   GridPane.rowIndex="8" GridPane.columnIndex="1"/>
+
+        <!-- Platform -->
+        <Label text="Platform:" GridPane.rowIndex="9" GridPane.columnIndex="0"/>
+        <TextField fx:id="platformField" promptText="e.g., Zoom, Google Meet, etc." 
+                   GridPane.rowIndex="9" GridPane.columnIndex="1"/>
+
+        <!-- Link -->
+        <Label text="Link:" GridPane.rowIndex="10" GridPane.columnIndex="0"/>
+        <HBox spacing="5" GridPane.rowIndex="10" GridPane.columnIndex="1">
+            <TextField fx:id="linkField" promptText="Enter meeting link" HBox.hgrow="ALWAYS"/>
+            <Button fx:id="generateLinkButton" text="Generate Link" 
+                    style="-fx-background-color: #2196F3; -fx-text-fill: white;"/>
+        </HBox>
+
+        <!-- Recording Available -->
+        <Label text="Recording Available:" GridPane.rowIndex="11" GridPane.columnIndex="0"/>
+        <CheckBox fx:id="recordingAvailable" 
+                  GridPane.rowIndex="11" GridPane.columnIndex="1"/>
+    </GridPane>
+
+    <Region VBox.vgrow="ALWAYS"/>
+
+    <HBox spacing="10" alignment="CENTER">
+        <Button text="Add Webinar" onAction="#handleAddWebinar" 
+                style="-fx-background-color: #4CAF50; -fx-text-fill: white; -fx-font-weight: bold;"
+                prefWidth="150"/>
+    </HBox>
+</VBox> 

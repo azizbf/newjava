@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import java.lang.*?>
+<?import java.util.*?>
+<?import javafx.scene.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.text.Font?>
+
+<AnchorPane xmlns="http://javafx.com/javafx"
+            xmlns:fx="http://javafx.com/fxml"
+            fx:controller="org.example.controller.webinar.afficher"
+            prefHeight="600.0" prefWidth="900.0">
+    <VBox spacing="10" AnchorPane.topAnchor="10.0" AnchorPane.leftAnchor="10.0" 
+          AnchorPane.rightAnchor="10.0" AnchorPane.bottomAnchor="10.0">
+        <HBox spacing="10" alignment="CENTER_LEFT">
+            <Label text="Webinars" styleClass="title-label">
+                <font>
+                    <Font name="System Bold" size="20.0"/>
+                </font>
+            </Label>
+            <Region HBox.hgrow="ALWAYS" />
+            <Button text="Add Webinar" onAction="#openAddWebinarForm" styleClass="action-button">
+                <tooltip>
+                    <Tooltip text="Create a new webinar" />
+                </tooltip>
+            </Button>
+            <Button text="My Calendar" onAction="#showCalendarView" styleClass="action-button">
+                <tooltip>
+                    <Tooltip text="View calendar of webinars you've registered for" />
+                </tooltip>
+            </Button>
+        </HBox>
+        
+        <!-- Search and Sort Bar -->
+        <HBox spacing="10" alignment="CENTER_LEFT">
+            <Label text="Search by title:"/>
+            <TextField fx:id="searchField" promptText="Enter webinar title..." HBox.hgrow="ALWAYS"/>
+            <Label text="Sort by:"/>
+            <ComboBox fx:id="sortComboBox" prefWidth="150"/>
+        </HBox>
+        
+        <TableView fx:id="webinarTableView" VBox.vgrow="ALWAYS">
+            <columns>
+                <TableColumn fx:id="idColumn" text="ID" prefWidth="50"/>
+                <TableColumn fx:id="titleColumn" text="Title" prefWidth="150"/>
+                <TableColumn fx:id="descriptionColumn" text="Description" prefWidth="200"/>
+                <TableColumn fx:id="debutColumn" text="Start Date" prefWidth="120"/>
+                <TableColumn fx:id="durationColumn" text="Duration (min)" prefWidth="80"/>
+                <TableColumn fx:id="categoryColumn" text="Category" prefWidth="100"/>
+                <TableColumn fx:id="platformColumn" text="Platform" prefWidth="80"/>
+                <TableColumn fx:id="actionsColumn" text="Actions" prefWidth="120"/>
+            </columns>
+        </TableView>
+    </VBox>
+</AnchorPane>
