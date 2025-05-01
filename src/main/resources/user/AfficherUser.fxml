@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.ListView?>
+<?import javafx.scene.layout.AnchorPane?>
+
+<AnchorPane prefHeight="450.0" prefWidth="600.0" xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1" fx:controller="org.example.controller.user.AfficherUser">
+
+    <children>
+
+
+        <!-- ListView to display Trajet -->
+        <ListView fx:id="horaireListView" layoutX="50.0" layoutY="50.0" prefHeight="200.0" prefWidth="500.0" />
+    </children>
+</AnchorPane>
