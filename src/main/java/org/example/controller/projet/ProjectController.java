@@ -105,7 +105,7 @@ public class ProjectController {
 
         String sql = """
             SELECT status
-            FROM postuler
+            FROM postulerr
             WHERE id_projet = ? AND email = ? AND status = 'Accepted'
             """;
             
@@ -321,7 +321,7 @@ public class ProjectController {
         
         String sql = """
             SELECT p.email, p.status
-            FROM postuler p
+            FROM postulerr p
             WHERE p.id_projet = ? AND p.status = 'Accepted'
             ORDER BY p.email
             """;

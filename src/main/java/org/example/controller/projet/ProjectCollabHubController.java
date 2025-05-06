@@ -111,7 +111,7 @@ public class ProjectCollabHubController implements Initializable {
     private void loadTeamMembers() {
         System.out.println("Loading team members for project: " + projectId);
         try (Connection conn = dataSource.getInstance().getConnection()) {
-            String query = "SELECT DISTINCT p.email, p.first_name FROM postuler p WHERE p.id_projet = ? AND p.status = 'Accepted'";
+            String query = "SELECT DISTINCT p.email, p.first_name FROM postulerr p WHERE p.id_projet = ? AND p.status = 'Accepted'";
             PreparedStatement stmt = conn.prepareStatement(query);
             stmt.setInt(1, projectId);
             ResultSet rs = stmt.executeQuery();
@@ -167,7 +167,7 @@ public class ProjectCollabHubController implements Initializable {
             String query = """
                 SELECT m.sender_email, p.first_name, m.message_text, m.sent_time 
                 FROM project_messages m 
-                LEFT JOIN postuler p ON m.sender_email = p.email 
+                LEFT JOIN postulerr p ON m.sender_email = p.email 
                 WHERE m.project_id = ? 
                 ORDER BY m.sent_time DESC 
                 LIMIT 50

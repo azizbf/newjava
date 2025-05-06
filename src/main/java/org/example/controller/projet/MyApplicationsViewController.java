@@ -105,10 +105,10 @@ public class MyApplicationsViewController {
             
             if (userEmail == null || userEmail.isEmpty()) {
                 System.out.println("Warning: No user email set, loading all applications for troubleshooting.");
-                query = "SELECT p.project_name, a.status, a.email FROM postuler a JOIN projet p ON a.id_projet = p.id ORDER BY a.id_projet DESC";
+                query = "SELECT p.project_name, a.status, a.email FROM postulerr a JOIN projet p ON a.id_projet = p.id ORDER BY a.id_projet DESC";
                 stmt = conn.prepareStatement(query);
             } else {
-                query = "SELECT p.project_name, a.status, a.email FROM postuler a JOIN projet p ON a.id_projet = p.id WHERE a.email = ? ORDER BY a.id_projet DESC";
+                query = "SELECT p.project_name, a.status, a.email FROM postulerr a JOIN projet p ON a.id_projet = p.id WHERE a.email = ? ORDER BY a.id_projet DESC";
                 stmt = conn.prepareStatement(query);
                 stmt.setString(1, userEmail);
             }
@@ -161,7 +161,7 @@ public class MyApplicationsViewController {
     private void cancelApplication(ApplicationItem item) {
         try {
             Connection conn = dataSource.getInstance().getConnection();
-            String query = "DELETE FROM postuler WHERE email = ? AND id_projet = (SELECT id FROM projet WHERE project_name = ? LIMIT 1)";
+            String query = "DELETE FROM postulerr WHERE email = ? AND id_projet = (SELECT id FROM projet WHERE project_name = ? LIMIT 1)";
             PreparedStatement stmt = conn.prepareStatement(query);
             stmt.setString(1, userEmail);
             stmt.setString(2, item.getProjectName());

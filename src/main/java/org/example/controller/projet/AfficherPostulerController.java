@@ -93,7 +93,7 @@ public class AfficherPostulerController {
         postulerList.clear();
         try {
             Connection conn = dataSource.getInstance().getConnection();
-            String query = "SELECT * FROM postuler";
+            String query = "SELECT * FROM postulerr";
             PreparedStatement stmt = conn.prepareStatement(query);
             ResultSet rs = stmt.executeQuery();
 
@@ -136,7 +136,7 @@ public class AfficherPostulerController {
                 Connection conn = dataSource.getInstance().getConnection();
                 
                 // First check if the application still exists
-                String checkQuery = "SELECT COUNT(*) FROM postuler WHERE id_projet = ? AND email = ?";
+                String checkQuery = "SELECT COUNT(*) FROM postulerr WHERE id_projet = ? AND email = ?";
                 PreparedStatement checkStmt = conn.prepareStatement(checkQuery);
                 checkStmt.setInt(1, selected.getProjectId());
                 checkStmt.setString(2, selected.getEmail());
@@ -148,7 +148,7 @@ public class AfficherPostulerController {
                     return;
                 }
 
-                String deleteQuery = "DELETE FROM postuler WHERE id_projet = ? AND email = ?";
+                String deleteQuery = "DELETE FROM postulerr WHERE id_projet = ? AND email = ?";
                 PreparedStatement pstmt = conn.prepareStatement(deleteQuery);
                 pstmt.setInt(1, selected.getProjectId());
                 pstmt.setString(2, selected.getEmail());
@@ -203,7 +203,7 @@ public class AfficherPostulerController {
         postulerList.clear();
         try {
             Connection conn = dataSource.getInstance().getConnection();
-            String query = "SELECT * FROM postuler WHERE first_name LIKE ? OR email LIKE ? OR joining_reason LIKE ?";
+            String query = "SELECT * FROM postulerr WHERE first_name LIKE ? OR email LIKE ? OR joining_reason LIKE ?";
             PreparedStatement stmt = conn.prepareStatement(query);
             String searchPattern = "%" + searchText + "%";
             stmt.setString(1, searchPattern);

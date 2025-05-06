@@ -89,7 +89,16 @@
                     </font>
                 </Label>
 
-                <Button styleClass="menu-button" prefHeight="50.0" prefWidth="220.0" text="Projet">
+                <Button fx:id="projectButton" styleClass="menu-button" prefHeight="50.0" prefWidth="220.0" text="Projet">
+                    <font>
+                        <Font name="Segoe UI" size="14.0" />
+                    </font>
+                    <graphic>
+                        <Label text="📝" styleClass="menu-icon" />
+                    </graphic>
+                </Button>
+
+                <Button fx:id="applicationsButton" styleClass="menu-button" prefHeight="50.0" prefWidth="220.0" text="App Projet">
                     <font>
                         <Font name="Segoe UI" size="14.0" />
                     </font>

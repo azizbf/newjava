@@ -150,7 +150,7 @@ public class PostulerController implements DataInitializable {
 
         try {
             Connection conn = dataSource.getInstance().getConnection();
-            String query = "INSERT INTO postuler (id_projet, first_name, email, joining_reason, num_tel) VALUES (?, ?, ?, ?, ?)";
+            String query = "INSERT INTO postulerr (id_projet, first_name, email, joining_reason, num_tel) VALUES (?, ?, ?, ?, ?)";
             
             PreparedStatement pstmt = conn.prepareStatement(query);
             pstmt.setInt(1, Integer.parseInt(tfProjectId.getText()));
@@ -208,7 +208,7 @@ public class PostulerController implements DataInitializable {
     private boolean emailExistsForProject(String email, int projectId) {
         try {
             Connection conn = dataSource.getInstance().getConnection();
-            String query = "SELECT COUNT(*) FROM postuler WHERE email = ? AND id_projet = ?";
+            String query = "SELECT COUNT(*) FROM postulerr WHERE email = ? AND id_projet = ?";
             PreparedStatement pstmt = conn.prepareStatement(query);
             pstmt.setString(1, email);
             pstmt.setInt(2, projectId);

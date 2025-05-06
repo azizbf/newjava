@@ -137,7 +137,7 @@ public class AfficherPostulerAdminController {
         try (Connection conn = dataSource.getInstance().getConnection();
              PreparedStatement stmt = conn.prepareStatement(
                      "SELECT id_projet, first_name, email, joining_reason, num_tel, " +
-                     "COALESCE(status, 'Pending') as status FROM postuler ORDER BY id_projet DESC")) {
+                     "COALESCE(status, 'Pending') as status FROM postulerr ORDER BY id_projet DESC")) {
 
             ResultSet rs = stmt.executeQuery();
             while (rs.next()) {
@@ -156,7 +156,7 @@ public class AfficherPostulerAdminController {
                 // Try to add the status column
                 try (Connection conn = dataSource.getInstance().getConnection();
                      Statement alterStmt = conn.createStatement()) {
-                    alterStmt.execute("ALTER TABLE postuler ADD COLUMN status VARCHAR(20) DEFAULT 'Pending'");
+                    alterStmt.execute("ALTER TABLE postulerr ADD COLUMN status VARCHAR(20) DEFAULT 'Pending'");
                     // Try loading again after adding the column
                     loadApplications();
                     return;
@@ -247,7 +247,7 @@ public class AfficherPostulerAdminController {
         if (result.isPresent() && result.get() == ButtonType.OK) {
             try (Connection conn = dataSource.getInstance().getConnection();
                  PreparedStatement stmt = conn.prepareStatement(
-                         "DELETE FROM postuler WHERE id_projet = ? AND email = ?")) {
+                         "DELETE FROM postulerr WHERE id_projet = ? AND email = ?")) {
                 
                 stmt.setInt(1, application.getProjectId());
                 stmt.setString(2, application.getEmail());
@@ -275,7 +275,7 @@ public class AfficherPostulerAdminController {
 
         try (Connection conn = dataSource.getInstance().getConnection();
              PreparedStatement stmt = conn.prepareStatement(
-                     "UPDATE postuler SET status = 'Accepted' WHERE id_projet = ? AND email = ?")) {
+                     "UPDATE postulerr SET status = 'Accepted' WHERE id_projet = ? AND email = ?")) {
             int successCount = 0;
             for (ApplicationTableItem item : selectedItems) {
                 stmt.setInt(1, item.getProjectId());
@@ -305,7 +305,7 @@ public class AfficherPostulerAdminController {
 
         try (Connection conn = dataSource.getInstance().getConnection();
              PreparedStatement stmt = conn.prepareStatement(
-                     "UPDATE postuler SET status = 'Rejected' WHERE id_projet = ? AND email = ?")) {
+                     "UPDATE postulerr SET status = 'Rejected' WHERE id_projet = ? AND email = ?")) {
             int successCount = 0;
             for (ApplicationTableItem item : selectedItems) {
                 stmt.setInt(1, item.getProjectId());
@@ -400,7 +400,7 @@ public class AfficherPostulerAdminController {
         if (result.isPresent() && result.get() == ButtonType.OK) {
             try (Connection conn = dataSource.getInstance().getConnection();
                  PreparedStatement stmt = conn.prepareStatement(
-                         "DELETE FROM postuler WHERE id_projet = ? AND email = ?")) {
+                         "DELETE FROM postulerr WHERE id_projet = ? AND email = ?")) {
                 
                 int successCount = 0;
                 for (ApplicationTableItem item : selectedItems) {

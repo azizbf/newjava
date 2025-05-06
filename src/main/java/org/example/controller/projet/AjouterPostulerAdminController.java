@@ -113,7 +113,7 @@ public class AjouterPostulerAdminController {
                 }
 
                 // Insert new application
-                String query = "INSERT INTO postuler (id_projet, first_name, email, joining_reason, num_tel, status) " +
+                String query = "INSERT INTO postulerr (id_projet, first_name, email, joining_reason, num_tel, status) " +
                               "VALUES (?, ?, ?, ?, ?, ?)";
                 
                 PreparedStatement stmt = conn.prepareStatement(query);
@@ -133,7 +133,7 @@ public class AjouterPostulerAdminController {
                 }
             } else {
                 // Update existing application
-                String query = "UPDATE postuler SET first_name = ?, joining_reason = ?, num_tel = ?, status = ? " +
+                String query = "UPDATE postulerr SET first_name = ?, joining_reason = ?, num_tel = ?, status = ? " +
                              "WHERE id_projet = ? AND email = ?";
                 
                 PreparedStatement stmt = conn.prepareStatement(query);
@@ -166,7 +166,7 @@ public class AjouterPostulerAdminController {
     }
 
     private boolean checkApplicationExists(Connection conn) throws SQLException {
-        String query = "SELECT COUNT(*) FROM postuler WHERE id_projet = ? AND email = ?";
+        String query = "SELECT COUNT(*) FROM postulerr WHERE id_projet = ? AND email = ?";
         PreparedStatement stmt = conn.prepareStatement(query);
         stmt.setInt(1, Integer.parseInt(tfProjectId.getText().trim()));
         stmt.setString(2, tfEmail.getText().trim());
@@ -302,7 +302,7 @@ public class AjouterPostulerAdminController {
 
         try (Connection conn = dataSource.getInstance().getConnection();
              PreparedStatement stmt = conn.prepareStatement(
-                     "UPDATE postuler SET status = 'Accepted' WHERE id_projet = ? AND email = ?")) {
+                     "UPDATE postulerr SET status = 'Accepted' WHERE id_projet = ? AND email = ?")) {
             
             int successCount = 0;
             for (ApplicationTableItem item : selectedItems) {
@@ -334,7 +334,7 @@ public class AjouterPostulerAdminController {
 
         try (Connection conn = dataSource.getInstance().getConnection();
              PreparedStatement stmt = conn.prepareStatement(
-                     "UPDATE postuler SET status = 'Rejected' WHERE id_projet = ? AND email = ?")) {
+                     "UPDATE postulerr SET status = 'Rejected' WHERE id_projet = ? AND email = ?")) {
             
             int successCount = 0;
             for (ApplicationTableItem item : selectedItems) {
@@ -422,7 +422,7 @@ public class AjouterPostulerAdminController {
         tableView.getItems().clear();
         try (Connection conn = dataSource.getInstance().getConnection();
              PreparedStatement stmt = conn.prepareStatement(
-                     "SELECT id_projet, first_name, email, joining_reason, num_tel, COALESCE(status, 'Pending') as status FROM postuler ORDER BY id_projet DESC")) {
+                     "SELECT id_projet, first_name, email, joining_reason, num_tel, COALESCE(status, 'Pending') as status FROM postulerr ORDER BY id_projet DESC")) {
 
             ResultSet rs = stmt.executeQuery();
             while (rs.next()) {

@@ -80,7 +80,7 @@ public class ModifierPostulerController {
 
         try {
             Connection conn = dataSource.getInstance().getConnection();
-            String query = "UPDATE postuler SET first_name = ?, email = ?, " +
+            String query = "UPDATE postulerr SET first_name = ?, email = ?, " +
                           "joining_reason = ?, num_tel = ? WHERE id_projet = ? AND email = ?";
             
             PreparedStatement stmt = conn.prepareStatement(query);

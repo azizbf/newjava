@@ -27,6 +27,12 @@ public class menu {
     private Button userForumButton;
 
     @FXML
+    private Button projectButton;
+
+    @FXML
+    private Button applicationsButton;
+
+    @FXML
     private Button signOutButton;
 
     @FXML
@@ -41,11 +47,15 @@ public class menu {
         buttonPathMap.put(forumButton, "/Forum/forum.fxml");
         buttonPathMap.put(userForumButton, "/Forum/user_forum.fxml");
         buttonPathMap.put(userButton, "/user/AfficherUser.fxml");
+        buttonPathMap.put(projectButton, "/projet/AfficherProjet.fxml");
+        buttonPathMap.put(applicationsButton, "/projet/AfficherPostulerAdmin.fxml");
 
         // Set up button actions
         forumButton.setOnAction(event -> handleButtonClick(forumButton));
         userForumButton.setOnAction(event -> handleButtonClick(userForumButton));
         userButton.setOnAction(event -> handleButtonClick(userButton));
+        projectButton.setOnAction(event -> handleButtonClick(projectButton));
+        applicationsButton.setOnAction(event -> handleButtonClick(applicationsButton));
 
         // Set up sign out button action
         signOutButton.setOnAction(event -> handleSignOut());
